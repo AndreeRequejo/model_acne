@@ -3,6 +3,7 @@ ACNE04/
 # Model files
 *.pt
 *.h5
+no_tta_prob.npy
 # Python cache
 __pycache__/
 *.py[cod]
