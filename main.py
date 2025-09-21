@@ -108,10 +108,11 @@ def train_model():
 
 
 def evaluate_model(test_loader, device):
-    """Evaluate the best model on test set"""
-    from sklearn.metrics import classification_report as rp
+    """Evaluar el modelo en el conjunto de prueba"""
+    from sklearn.metrics import classification_report as rp, confusion_matrix, accuracy_score
+    import matplotlib.pyplot as plt
     
-    # Intentar cargar primero los pesos solamente (más seguro)
+    # Intentar cargar primero los pesos solamente
     weights_path = MODEL_SAVE_PATH.replace('.pt', '_weights.pt')
     
     try:
@@ -119,32 +120,63 @@ def evaluate_model(test_loader, device):
         test_model = MyNet().cuda()
         test_model.load_state_dict(torch.load(weights_path, weights_only=True))
         test_model = test_model.to(device)
-        print("Modelo cargado usando state_dict (seguro)")
     except:
         # Si falla, usar el método original
         test_model = torch.load(MODEL_SAVE_PATH, weights_only=False)
         test_model = test_model.to(device)
-        print("Modelo cargado usando método legacy")
     
     preds, labels = test_result(test_model, test_loader, device)
+
+    # Calcular accuracy
+    accuracy = accuracy_score(labels.flatten(), preds)
+    
+    print(f"\nAccuracy: {accuracy:.4f} ({accuracy*100:.2f}%)")
     
     # Mostrar reporte de clasificación
     print("\n" + "="*50)
     print("Reporte de clasificación:")
     print("="*50)
-    print(rp(labels.flatten(), preds))
+    print(rp(labels.flatten(), preds, target_names=CLASS_NAMES))
     print("="*50)
+
+    # Calcular y mostrar matriz de confusión
+    cm = confusion_matrix(labels.flatten(), preds)
+    
+    print("\nMatriz de confusión:")
+    print("-"*30)
+    print(cm)
+
+    # Visualizar matriz de confusión
+    plt.figure(figsize=(10, 8))
+    plt.imshow(cm, interpolation='nearest', cmap='Blues')
+    plt.title('Matriz de Confusión')
+    plt.colorbar()
+
+    # Agregar números manualmente
+    thresh = cm.max() / 2.
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            plt.text(j, i, format(cm[i, j], 'd'),
+                    horizontalalignment="center",
+                    color="white" if cm[i, j] > thresh else "black",
+                    fontsize=14, fontweight='bold')
+
+    plt.ylabel('Valores Reales')
+    plt.xlabel('Predicciones')
+    plt.xticks(range(len(CLASS_NAMES)), CLASS_NAMES, rotation=45)
+    plt.yticks(range(len(CLASS_NAMES)), CLASS_NAMES)
+    plt.tight_layout()
+    plt.show()
     
     return preds, labels
 
 
 if __name__ == "__main__":
-    # Train the model
+    # Entrenar modelo
     test_loader, device = train_model()
     
-    # Evaluate on test set
+    # Evaluar modelo
     predictions, true_labels = evaluate_model(test_loader, device)
     
+    print(f"Cantidad de predicciones del test: {len(predictions)}")
     print("Entrenamiento completado!")
-    print(f"Test predictions shape: {len(predictions)}")
-    print(f"True labels shape: {true_labels.shape}")
