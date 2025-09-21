@@ -1,9 +1,8 @@
-# model.py
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
-from torchvision.models import EfficientNet_V2_M_Weights
+from torchvision.models import EfficientNet_V2_M_Weights, ResNet50_Weights, VGG16_Weights
 
 class LabelSmoothingLoss(nn.Module):
     def __init__(self, smoothing=0.1, dim=-1):
@@ -19,12 +18,13 @@ class LabelSmoothingLoss(nn.Module):
         loss = nn.KLDivLoss(reduction='batchmean')(log_pred, target)
         return loss
 
-
 class MyNet(nn.Module):
     def __init__(self):
         super(MyNet, self).__init__()
-     
+
         self.cnn = torchvision.models.efficientnet_v2_m(weights=EfficientNet_V2_M_Weights.DEFAULT).cuda()
+        # self.cnn = torchvision.models.resnet50(weights=ResNet50_Weights.DEFAULT).cuda()
+        # self.cnn = torchvision.models.vgg16(weights=VGG16_Weights.DEFAULT).cuda()
         for param in self.cnn.parameters():
             param.requires_grad = True
         self.cnn.classifier = nn.Sequential(
@@ -36,6 +36,29 @@ class MyNet(nn.Module):
             nn.Linear(128, 64),
             nn.Linear(64, 4),     
         )
+        
+        # self.cnn.fc = nn.Sequential(
+        #     nn.Linear(self.cnn.fc.in_features, 512),
+        #     nn.Dropout(p=0.2),
+        #     nn.ReLU(),
+        #     nn.Linear(512, 128),
+        #     nn.Dropout(p=0.2),
+        #     nn.Linear(128, 64),
+        #     nn.Linear(64, 4)
+        # )
+        
+        # self.cnn.classifier = nn.Sequential(
+        #     nn.Linear(25088, 4096),
+        #     nn.ReLU(True),
+        #     nn.Dropout(),
+        #     nn.Linear(4096, 512),
+        #     nn.ReLU(True),
+        #     nn.Dropout(p=0.2),
+        #     nn.Linear(512, 128),
+        #     nn.Dropout(p=0.2),
+        #     nn.Linear(128, 64),
+        #     nn.Linear(64, 4)
+        # )
         
     def forward(self, img):
         output = self.cnn(img)
