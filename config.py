@@ -51,12 +51,12 @@ TEST_TRANSFORM = torchvision.transforms.Compose([
 ])
 
 # MODEL SAVE PATH
-MODEL_SAVE_PATH = "./model_acne.pt"
+MODEL_SAVE_PATH = "./acne_model.pt"
 
 # CLASS NAMES (ajusta según tu dataset)
 CLASS_NAMES = [
-    "Mild Acne",      # Clase 0
-    "Moderate Acne",  # Clase 1
-    "Severe Acne",    # Clase 2
-    "Very Severe"     # Clase 3
+    "Leve",      # Clase 0
+    "Moderado",  # Clase 1
+    "Severo",    # Clase 2
+    "Muy Severo" # Clase 3
 ]
