@@ -1,0 +1,62 @@
+# config.py
+import torchvision
+from torchvision.models import EfficientNet_V2_M_Weights
+
+# PATHS AND FILES
+TRAIN_FILES = [
+    "ACNE04/NNEW_trainval_0.txt",
+    "ACNE04/NNEW_trainval_1.txt",
+    "ACNE04/NNEW_trainval_2.txt",
+    "ACNE04/NNEW_trainval_3.txt",
+    "ACNE04/NNEW_trainval_4.txt"
+]
+
+TEST_FILES = [
+    "ACNE04/NNEW_test_0.txt",
+    "ACNE04/NNEW_test_1.txt",
+    "ACNE04/NNEW_test_2.txt",
+    "ACNE04/NNEW_test_3.txt",
+    "ACNE04/NNEW_test_4.txt"
+]
+
+IMAGE_PATH = "ACNE04/JPEGImages"
+
+# TRAINING PARAMETERS
+BATCH_SIZE = 16
+NUM_EPOCHS = 20
+LEARNING_RATE = 0.0001
+VALIDATION_SPLIT = 0.2
+SMOOTHING = 0.12
+
+# IMAGE TRANSFORMS
+MEAN = (0.5, 0.5, 0.5)
+STD = (0.5, 0.5, 0.5)
+IMAGE_SIZE = (224, 224)
+
+# DATA TRANSFORMS
+TRAIN_TRANSFORM = torchvision.transforms.Compose([
+    torchvision.transforms.Resize(IMAGE_SIZE),
+    torchvision.transforms.RandomHorizontalFlip(p=0.5),
+    torchvision.transforms.RandomVerticalFlip(p=0.5),
+    torchvision.transforms.RandomRotation(degrees=15),
+    torchvision.transforms.ElasticTransform(),
+    torchvision.transforms.ToTensor(),
+    torchvision.transforms.Normalize(MEAN, STD)
+])
+
+TEST_TRANSFORM = torchvision.transforms.Compose([
+    torchvision.transforms.Resize(IMAGE_SIZE),
+    torchvision.transforms.ToTensor(),
+    torchvision.transforms.Normalize(MEAN, STD)
+])
+
+# MODEL SAVE PATH
+MODEL_SAVE_PATH = "./model_acne.pt"
+
+# CLASS NAMES (ajusta según tu dataset)
+CLASS_NAMES = [
+    "Mild Acne",      # Clase 0
+    "Moderate Acne",  # Clase 1
+    "Severe Acne",    # Clase 2
+    "Very Severe"     # Clase 3
+]
