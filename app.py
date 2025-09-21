@@ -1,378 +1,264 @@
-import pandas as pd
-
-train_files = [
-    "ACNE04/NNEW_trainval_0.txt",
-    "ACNE04/NNEW_trainval_1.txt",
-    "ACNE04/NNEW_trainval_2.txt",
-    "ACNE04/NNEW_trainval_3.txt",
-    "ACNE04/NNEW_trainval_4.txt"
-]
-
-test_files = [
-    "ACNE04/NNEW_test_0.txt",
-    "ACNE04/NNEW_test_1.txt",
-    "ACNE04/NNEW_test_2.txt",
-    "ACNE04/NNEW_test_3.txt",
-    "ACNE04/NNEW_test_4.txt"
-]
-
-path = "ACNE04/JPEGImages"
-
-from PIL import Image
-import os
+# predict_gui.py - Interfaz gráfica simple
+import tkinter as tk
+from tkinter import filedialog, messagebox
 import torch
-from sklearn.model_selection import train_test_split
-
-#! DATA CLASS
-class ClassificationDataset:
-    def __init__(self, data, data_path, transform, training=True):
-        """Define the dataset for classification problems
-
-        Args:
-            data ([dataframe]): [a dataframe that contain 2 columns: image name and label]
-            data_path ([str]): [path/to/folder that contains image file]
-            transform : [augmentation methods and transformation of images]
-            training (bool, optional): []. Defaults to True.
-        """
-        self.data = data
-        self.imgs = data["path"].unique().tolist()
-        self.data_path = data_path
-        self.training = training
-        self.transform = transform
-
-    def __getitem__(self, idx):
-        img = Image.open(os.path.join(self.data_path, self.data.iloc[idx, 0]))
-        label = self.data.iloc[idx, 1]
-        if self.transform is not None:
-            img = self.transform(img)
-        return img, label
-
-    def __len__(self):
-        return len(self.imgs)
-
-
-def make_loader(dataset, train_batch_size, validation_split=0.2):
-    """make dataloader for pytorch training
-
-    Args:
-        dataset ([object]): [the dataset object]
-        train_batch_size ([int]): [training batch size]
-        validation_split (float, optional): [validation ratio]. Defaults to 0.2.
-
-    Returns:
-        [type]: [description]
-    """
-    # number of samples in train and test set
-    train_len = int(len(dataset) * (1 - validation_split))
-    test_len = len(dataset) - train_len
-    train_set, test_set = torch.utils.data.random_split(dataset, [train_len, test_len])
-    # create train_loader
-    train_loader = torch.utils.data.DataLoader(
-        train_set, batch_size=train_batch_size, shuffle=True,
-    )
-    # create test_loader
-    test_loader = torch.utils.data.DataLoader(test_set, batch_size=1, shuffle=False,)
-    return train_loader, test_loader
-
-
-def data_split(data, test_size):
-    x_train, x_test, y_train, y_test = train_test_split(
-        data, data["label"], test_size=test_size, stratify = data.iloc[:,1]
-    )
-    return x_train, x_test, y_train, y_test
-
-
-#! METRICS CLASS
-from sklearn import metrics as skmetrics
-import numpy
-class Metrics:
-    def __init__(self, metric_names):
-        self.metric_names = metric_names
-        # initialize a metric dictionary
-        self.metric_dict = {metric_name: [0] for metric_name in self.metric_names}
-
-    def step(self, labels, preds):
-        for metric in self.metric_names:
-            # get the metric function
-            do_metric = getattr(
-                skmetrics, metric, "The metric {} is not implemented".format(metric)
-            )
-            # check if metric require average method, if yes set to 'micro' or 'macro' or 'None'
-            try:
-                self.metric_dict[metric].append(
-                    do_metric(labels, preds, average="macro")
-                )
-            except:
-                self.metric_dict[metric].append(do_metric(labels, preds))
-
-    def epoch(self):
-        # calculate metrics for an entire epoch
-        avg = [sum(metric) / (len(metric) - 1) for metric in self.metric_dict.values()]
-        metric_as_dict = dict(zip(self.metric_names, avg))
-        return metric_as_dict
-
-    def last_step_metrics(self):
-        # return metrics of last steps
-        values = [self.metric_dict[metric][-1] for metric in self.metric_names]
-        metric_as_dict = dict(zip(self.metric_names, values))
-        return metric_as_dict
-    
-
-#! batch size
-bs = 16
-
-
-#! LOSS FUNCTION
 import torch.nn.functional as F
-import torch.nn as nn
-
-class LabelSmoothingLoss(nn.Module):
-    def __init__(self, smoothing=0.1, dim=-1):
-        super(LabelSmoothingLoss, self).__init__()
-        self.smoothing = smoothing
-        self.dim = dim
-
-    def forward(self, pred, target):
-        target = F.one_hot(target, num_classes=pred.size(-1))
-        target = target.float()
-        target = (1 - self.smoothing) * target + self.smoothing / pred.size(-1)
-        log_pred = F.log_softmax(pred, dim=self.dim)
-        loss = nn.KLDivLoss(reduction='batchmean')(log_pred, target)
-        return loss
-    
-criterion = LabelSmoothingLoss(smoothing=0.12)
-
-
-#! TRAINING FUNCTION
-def train_one_epoch(
-    model,
-    train_loader,
-    test_loader,
-    device,
-    optimizer,
-    criterion,
-    train_metrics,
-    val_metrics,
-):
-
-    # training-the-model
-    train_loss = 0
-    valid_loss = 0
-    all_labels = []
-    all_preds = []
-    model.train()
-    for data, target in train_loader:
-        # move-tensors-to-GPU
-        data = data.type(torch.FloatTensor).to(device)
-#         day = day.view(-1,1).type(torch.FloatTensor).to(device)
-        # target=torch.Tensor(target)
-        target = target.float().to(device)
-        # clear-the-gradients-of-all-optimized-variables
-        optimizer.zero_grad()
-        # forward-pass: compute-predicted-outputs-by-passing-inputs-to-the-model
-        output = model(data)
-        preds = torch.argmax(output, axis=1).cpu().detach().numpy()
-        labels = target.cpu().numpy()
-        # calculate-the-batch-loss
-        loss = criterion(output.type(torch.FloatTensor), target.type(torch.LongTensor))
-        # backward-pass: compute-gradient-of-the-loss-wrt-model-parameters
-        loss.backward()
-        # perform-a-ingle-optimization-step (parameter-update)
-        optimizer.step()
-        # update-training-loss
-        train_loss += loss.item() * data.size(0)
-        # calculate training metrics
-        all_labels.extend(labels)
-        all_preds.extend(preds)
-    
-    train_metrics.step(all_labels, all_preds)
-
-    # validate-the-model
-    model.eval()
-    all_labels = []
-    all_preds = []
-    with torch.no_grad():
-        for data, target in test_loader:
-            data = data.type(torch.FloatTensor).to(device)
-#             day = day.view(-1,1).type(torch.FloatTensor).to(device)
-            target = target.to(device)
-            output = model(data)
-            preds = torch.argmax(output, axis=1).tolist()
-            labels = target.tolist()
-            all_labels.extend(labels)
-            all_preds.extend(preds)
-            loss = criterion(output, target)
-
-            # update-average-validation-loss
-            valid_loss += loss.item() * data.size(0)
-
-    val_metrics.step(all_labels, all_preds)
-    train_loss = train_loss / len(train_loader.sampler)
-    valid_loss = valid_loss / len(test_loader.sampler)
-
-    return (
-        train_loss,
-        valid_loss,
-        train_metrics.last_step_metrics(),
-        val_metrics.last_step_metrics(),
-)
-
-train_df = pd.read_csv(train_files[0],names=['path','label','leisons'],sep='  ',engine='python')
-x_train, x_val, y_train, y_val = data_split(train_df,0.2)
-
-test_df = pd.read_csv(test_files[0],names=['path','label','leisons'],sep='  ',engine='python')
-
-import torchvision
-from torchvision.models import EfficientNet_V2_M_Weights
-mean = (0.5, 0.5, 0.5)
-std = (0.5, 0.5, 0.5)
-transform = torchvision.transforms.Compose([torchvision.transforms.Resize((224, 224)),
-                                            torchvision.transforms.RandomHorizontalFlip(p=0.5),  # Randomly flip images left-right
-                            torchvision.transforms.RandomVerticalFlip(p=0.5),
-                            torchvision.transforms.RandomRotation(degrees=15),
-                                            torchvision.transforms.ElasticTransform(),
-                                               torchvision.transforms.ToTensor(),
-                                               torchvision.transforms.Normalize(mean, std)])
-test_transform = torchvision.transforms.Compose([torchvision.transforms.Resize((224, 224)),
-                                               torchvision.transforms.ToTensor(),
-                                               torchvision.transforms.Normalize(mean, std)])
-
-
-train_dataset = ClassificationDataset(x_train,data_path = path,transform=transform,training=True)
-val_dataset = ClassificationDataset(x_val,data_path = path,transform=test_transform,training=True)
-train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=bs, shuffle=True,
-    )
-    # create test_loader
-val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=1, shuffle=False)
-
-
-testset = ClassificationDataset(test_df,data_path = path,transform=test_transform,training=True)
-test_loader = torch.utils.data.DataLoader(
-        testset, batch_size=1, shuffle=False,
-    )
-
-train_metrics = Metrics(["accuracy_score","f1_score"])
-val_metrics = Metrics(["accuracy_score","f1_score"])
-
-
-#! MODEL DEFINITION
-class MyNet(nn.Module):
-    def __init__(self):
-        super(MyNet, self).__init__()
-     
-        self.cnn = torchvision.models.efficientnet_v2_m(weights=EfficientNet_V2_M_Weights.DEFAULT).cuda()
-        for param in self.cnn.parameters():
-            param.requires_grad = True
-        self.cnn.classifier = nn.Sequential(
-      
-        nn.Linear(self.cnn.classifier[1].in_features, 512),
-        nn.Dropout(p=0.2),
-        nn.ReLU(),
-        nn.Linear(512, 128),
-        nn.Dropout(p=0.2),
-        nn.Linear(128, 64),
-            nn.Linear(64, 4),     
-       )
-        
-    def forward(self, img):
-        output = self.cnn(img)
-        return output
-
-model = MyNet().cuda()
-
-a= torch.ones((16,3,224,224)).cuda()
-
-model(a)
-
-from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
-optimizer = torch.optim.Adam(model.parameters(), lr=0.0001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
-
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, "min", patience=4, factor=0.5
-    )
-
-device = torch.device("cuda")
-
-from tqdm import tqdm
-for param in model.parameters():
-    param.requires_grad = True
-
-model = model.to(device)
-num_epoch = 20
-best_val_acc = 0.0
-import logging
+from PIL import Image, ImageTk
 import numpy as np
-print("begin training process")
-for i in tqdm(range(0, num_epoch)):
-    loss, val_loss, train_result, val_result = train_one_epoch(
-        model,
-        train_loader,
-        val_loader,
-        device,
-        optimizer,
-        criterion,
-        train_metrics,
-        val_metrics,
-    )
 
-    scheduler.step(val_loss)
-#     scheduler.step()
-    print(
-        "Epoch {} / {} \n Training loss: {} - Other training metrics: ".format(
-            i + 1, num_epoch, loss
-        )
-    )
-    print(train_result)
-    print(
-        " \n Validation loss : {} - Other validation metrics:".format(val_loss)
-    )
-    print(val_result)
-    print("\n")
-    # saving epoch with best validation accuracy
-    if (loss<0.04):
-        # no saving
-        continue
-    if best_val_acc < float(val_result["accuracy_score"]):
-        print(
-            "Validation accuracy= "+
-            str(val_result["accuracy_score"])+
-            "===> Save best epoch"
-        )
-        best_val_acc = val_result["accuracy_score"]
-        torch.save(
-            model,
-            "./" +  "best.pt"
-        )
-    else:
-        print(
-            "Validation accuracy= "+ str(val_result["accuracy_score"])+ "===> No saving"
-        )
-        continue
+# Importar módulos locales
+from config import TEST_TRANSFORM, CLASS_NAMES
+from model import MyNet
 
-def test_result(model, test_loader, device,name='no_tta_prob.npy'):
-    # testing the model by turning model "Eval" mode
-    model.eval()
-    preds = []
-    aprobs = []
-    labels = []
-    with torch.no_grad():
-        for data,target in test_loader:
-            # move-tensors-to-GPU
-            data = data.to(device)
-            # forward-pass: compute-predicted-outputs-by-passing-inputs-to-the-model
-            output = model(data)
-            prob = nn.Softmax(dim=1)
-            # applying Softmax to results
-            probs = prob(output)
-            aprobs.append(probs.cpu())
-            labels.append(target.cpu().numpy())
-            preds.extend(torch.argmax(probs, axis=1).tolist())
-    aprobs = np.array(aprobs)
-    np.save(name,aprobs)
-    return preds, np.array(labels)
+class AcneClassifierGUI:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Clasificador de Severidad de Acné")
+        self.root.geometry("800x600")
+        
+        self.model = None
+        self.device = None
+        self.current_image = None
+        
+        self.setup_ui()
+        self.load_model()
+    
+    def setup_ui(self):
+        """Configurar interfaz de usuario"""
+        
+        # Frame principal
+        main_frame = tk.Frame(self.root, padx=20, pady=20)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Título
+        title_label = tk.Label(main_frame, text="🏥 Clasificador de Severidad de Acné", 
+                              font=("Arial", 16, "bold"))
+        title_label.pack(pady=(0, 20))
+        
+        # Botones
+        button_frame = tk.Frame(main_frame)
+        button_frame.pack(pady=(0, 20))
+        
+        self.load_button = tk.Button(button_frame, text="📁 Cargar Imagen", 
+                                    command=self.load_image, font=("Arial", 12))
+        self.load_button.pack(side=tk.LEFT, padx=(0, 10))
+        
+        self.predict_button = tk.Button(button_frame, text="🔍 Clasificar", 
+                                       command=self.predict, font=("Arial", 12),
+                                       state=tk.DISABLED)
+        self.predict_button.pack(side=tk.LEFT)
+        
+        # Frame para imagen
+        self.image_frame = tk.Frame(main_frame, relief=tk.SUNKEN, bd=2)
+        self.image_frame.pack(pady=(0, 20))
+        
+        self.image_label = tk.Label(self.image_frame, text="No hay imagen cargada", 
+                                   width=40, height=15, bg="lightgray")
+        self.image_label.pack(padx=10, pady=10)
+        
+        # Frame para resultados
+        self.result_frame = tk.Frame(main_frame)
+        self.result_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Etiquetas de resultado
+        self.result_text = tk.Text(self.result_frame, height=10, width=60, 
+                                  font=("Courier", 10), state=tk.DISABLED)
+        self.result_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # Scrollbar para texto
+        scrollbar = tk.Scrollbar(self.result_frame, command=self.result_text.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.result_text.config(yscrollcommand=scrollbar.set)
+        
+        # Status bar
+        self.status_var = tk.StringVar()
+        self.status_var.set("Listo")
+        status_bar = tk.Label(self.root, textvariable=self.status_var, 
+                             relief=tk.SUNKEN, anchor=tk.W)
+        status_bar.pack(side=tk.BOTTOM, fill=tk.X)
+    
+    def load_model(self):
+        """Cargar modelo de clasificación"""
+        try:
+            self.status_var.set("Cargando modelo...")
+            self.root.update()
+            
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            
+            try:
+                model = torch.load("model_acne.pt", weights_only=False, map_location=device)
+            except:
+                model = MyNet()
+                model.load_state_dict(torch.load("model_acne.pt", weights_only=True, map_location=device))
+            
+            model = model.to(device)
+            model.eval()
+            
+            self.model = model
+            self.device = device
+            self.status_var.set("Modelo cargado exitosamente")
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudo cargar el modelo:\n{str(e)}")
+            self.status_var.set("Error cargando modelo")
+    
+    def load_image(self):
+        """Cargar imagen desde archivo"""
+        file_path = filedialog.askopenfilename(
+            title="Seleccionar imagen",
+            filetypes=[
+                ("Imágenes", "*.jpg *.jpeg *.png *.bmp *.tiff"),
+                ("JPEG", "*.jpg *.jpeg"),
+                ("PNG", "*.png"),
+                ("Todos los archivos", "*.*")
+            ]
+        )
+        
+        if file_path:
+            try:
+                # Cargar y mostrar imagen
+                image = Image.open(file_path).convert('RGB')
+                self.current_image = image
+                
+                # Redimensionar para mostrar
+                display_image = image.copy()
+                display_image.thumbnail((300, 300), Image.Resampling.LANCZOS)
+                
+                # Convertir para tkinter
+                photo = ImageTk.PhotoImage(display_image)
+                self.image_label.configure(image=photo, text="")
+                self.image_label.image = photo
+                
+                # Habilitar botón de predicción
+                self.predict_button.config(state=tk.NORMAL)
+                self.status_var.set(f"Imagen cargada: {file_path}")
+                
+                # Limpiar resultados anteriores
+                self.result_text.config(state=tk.NORMAL)
+                self.result_text.delete(1.0, tk.END)
+                self.result_text.config(state=tk.DISABLED)
+                
+            except Exception as e:
+                messagebox.showerror("Error", f"No se pudo cargar la imagen:\n{str(e)}")
+    
+    def predict(self):
+        """Realizar predicción"""
+        if self.model is None or self.current_image is None:
+            messagebox.showwarning("Advertencia", "Modelo o imagen no disponible")
+            return
+        
+        try:
+            self.status_var.set("Clasificando...")
+            self.root.update()
+            
+            # Preprocesar imagen
+            image_tensor = TEST_TRANSFORM(self.current_image).unsqueeze(0).to(self.device)
+            
+            # Hacer predicción
+            with torch.no_grad():
+                outputs = self.model(image_tensor)
+                probabilities = F.softmax(outputs, dim=1)
+                predicted_class = torch.argmax(probabilities, dim=1).item()
+                confidence = torch.max(probabilities).item()
+                probs_array = probabilities.cpu().numpy()[0]
+            
+            # Mostrar resultados
+            self.display_results(predicted_class, confidence, probs_array)
+            self.status_var.set("Clasificación completada")
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Error durante la predicción:\n{str(e)}")
+            self.status_var.set("Error en predicción")
+    
+    def display_results(self, predicted_class, confidence, probabilities):
+        """Mostrar resultados de la clasificación"""
+        
+        # Información de severidad
+        severity_info = {
+            0: ("LEVE", "Acné leve con pocos comedones"),
+            1: ("MODERADO", "Acné moderado con pápulas"),
+            2: ("SEVERO", "Acné severo con pústulas"),
+            3: ("MUY SEVERO", "Acné muy severo con nódulos")
+        }
+        
+        severity, description = severity_info.get(predicted_class, ("DESCONOCIDO", ""))
+        
+        # Formatear texto de resultados
+        result_text = f"""
+╔══════════════════════════════════════════════════════════╗
+║                    RESULTADO DE CLASIFICACIÓN            ║
+╠══════════════════════════════════════════════════════════╣
 
-test_model = torch.load("best.pt")
-test_model = test_model.to(device)
+🏷️  SEVERIDAD PREDICHA: {CLASS_NAMES[predicted_class]}
+📊 NIVEL: {severity}
+🎯 CONFIANZA: {confidence:.4f} ({confidence*100:.2f}%)
 
-preds,labels =test_result(test_model, test_loader, device)
+📝 DESCRIPCIÓN:
+   {description}
+
+📊 PROBABILIDADES POR CLASE:
+╠══════════════════════════════════════════════════════════╣
+"""
+        
+        # Agregar probabilidades
+        for i, prob in enumerate(probabilities):
+            marker = ">>> " if i == predicted_class else "    "
+            result_text += f"{marker}{CLASS_NAMES[i]:15}: {prob:.4f} ({prob*100:.2f}%)\n"
+        
+        result_text += f"""
+╠══════════════════════════════════════════════════════════╣
+💡 RECOMENDACIONES:
+"""
+        
+        # Recomendaciones según severidad
+        recommendations = {
+            0: "• Limpieza facial suave diaria\n• Productos no comedogénicos\n• Evitar tocar el rostro",
+            1: "• Productos con ácido salicílico\n• Considerar consulta dermatológica\n• Mantener rutina de limpieza",
+            2: "• Consulta dermatológica recomendada\n• Posible tratamiento tópico intensivo\n• Evitar auto-medicación",
+            3: "• CONSULTA DERMATOLÓGICA URGENTE\n• Tratamiento médico necesario\n• Posibles medicamentos sistémicos"
+        }
+        
+        result_text += f"   {recommendations.get(predicted_class, 'Consultar especialista')}\n"
+        
+        # Advertencia si confianza es baja
+        if confidence < 0.6:
+            result_text += f"""
+╠══════════════════════════════════════════════════════════╣
+⚠️  ADVERTENCIA: CONFIANZA BAJA ({confidence:.2f})
+   Se recomienda obtener segunda opinión médica
+"""
+        
+        result_text += """
+╚══════════════════════════════════════════════════════════╝
+
+NOTA: Este es un sistema de apoyo diagnóstico.
+Siempre consulte con un dermatólogo para diagnóstico definitivo.
+"""
+        
+        # Mostrar en el widget de texto
+        self.result_text.config(state=tk.NORMAL)
+        self.result_text.delete(1.0, tk.END)
+        self.result_text.insert(tk.END, result_text)
+        self.result_text.config(state=tk.DISABLED)
+
+def main():
+    """Función principal para ejecutar la GUI"""
+    root = tk.Tk()
+    app = AcneClassifierGUI(root)
+    
+    try:
+        root.mainloop()
+    except KeyboardInterrupt:
+        print("Aplicación cerrada por el usuario")
+
+if __name__ == "__main__":
+    # Verificar dependencias
+    try:
+        import tkinter
+        from PIL import ImageTk
+        main()
+    except ImportError as e:
+        print(f"❌ Error: Falta dependencia - {e}")
+        print("Instala las dependencias necesarias:")
+        print("pip install pillow")
+        print("Para sistemas Linux: sudo apt-get install python3-tk")
