@@ -1,7 +1,10 @@
 # main.py
+
 import torch
+torch.tensor([0.], device='cuda')
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from tqdm import tqdm
+import os
 
 # Importar módulos locales
 from config import *
@@ -14,7 +17,7 @@ from training import train_one_epoch, test_result
 def create_dataloaders():
     """Create training, validation and test dataloaders"""
     # Load data
-    train_df, test_df = load_data(TRAIN_FILES[1], TEST_FILES[1])
+    train_df, test_df = load_data(TRAIN_FILES[5], TEST_FILES[5])
     
     # Split training data
     x_train, x_val, y_train, y_val = data_split(train_df, VALIDATION_SPLIT)
@@ -58,20 +61,41 @@ def setup_training():
 def train_model():
     """Main training loop"""
     # Setup
+    import matplotlib.pyplot as plt
     train_loader, val_loader, test_loader = create_dataloaders()
-    model, optimizer, scheduler, criterion, train_metrics, val_metrics = setup_training()
-    
     device = torch.device("cuda")
-    model = model.to(device)
-    
+
+
+    # Si el modelo ya existe, cargarlo y continuar entrenamiento
+    if os.path.exists(MODEL_SAVE_PATH):
+        print(f"Modelo encontrado en {MODEL_SAVE_PATH}. Se continuará el entrenamiento desde el modelo guardado.")
+        model = torch.load(MODEL_SAVE_PATH, map_location=device, weights_only=False)
+        model = model.to(device)
+        # Se inicializan de nuevo optimizer, scheduler, etc. para continuar
+        optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
+        scheduler = ReduceLROnPlateau(optimizer, "min", patience=4, factor=0.5)
+        criterion = LabelSmoothingLoss(smoothing=SMOOTHING)
+        train_metrics = Metrics(["accuracy_score", "f1_score"])
+        val_metrics = Metrics(["accuracy_score", "f1_score"])
+    else:
+        # Si no existe, entrenar desde cero
+        model, optimizer, scheduler, criterion, train_metrics, val_metrics = setup_training()
+        model = model.to(device)
+
     # Enable gradients
     for param in model.parameters():
         param.requires_grad = True
-    
+
+    # Listas para almacenar historia
+    train_losses = []
+    val_losses = []
+    train_accuracies = []
+    val_accuracies = []
+
     # Training loop
     best_val_acc = 0.0
     print("Begin training process")
-    
+
     for i in tqdm(range(NUM_EPOCHS)):
         loss, val_loss, train_result, val_result = train_one_epoch(
             model,
@@ -85,17 +109,23 @@ def train_model():
         )
 
         scheduler.step(val_loss)
-        
+
+        # Guardar historia
+        train_losses.append(loss)
+        val_losses.append(val_loss)
+        train_accuracies.append(float(train_result["accuracy_score"]))
+        val_accuracies.append(float(val_result["accuracy_score"]))
+
         print(f"Epoch {i + 1} / {NUM_EPOCHS} \n Training loss: {loss} - Other training metrics: ")
         print(train_result)
         print(f" \n Validation loss : {val_loss} - Other validation metrics:")
         print(val_result)
         print("\n")
-        
+
         # Save best model
         if loss < 0.04:
             continue
-            
+
         if best_val_acc < float(val_result["accuracy_score"]):
             print(f"Validation accuracy= {val_result['accuracy_score']} ===> Save best epoch")
             best_val_acc = val_result["accuracy_score"]
@@ -103,7 +133,28 @@ def train_model():
         else:
             print(f"Validation accuracy= {val_result['accuracy_score']} ===> No saving")
             continue
-    
+
+    # Graficar curva de aprendizaje
+    epochs = range(1, NUM_EPOCHS + 1)
+    plt.figure(figsize=(12, 5))
+    plt.subplot(1, 2, 1)
+    plt.plot(epochs, train_losses, label='Pérdida entrenamiento')
+    plt.plot(epochs, val_losses, label='Pérdida validación')
+    plt.xlabel('Época')
+    plt.ylabel('Pérdida')
+    plt.title('Curva de pérdida')
+    plt.legend()
+
+    plt.subplot(1, 2, 2)
+    plt.plot(epochs, train_accuracies, label='Accuracy entrenamiento')
+    plt.plot(epochs, val_accuracies, label='Accuracy validación')
+    plt.xlabel('Época')
+    plt.ylabel('Accuracy')
+    plt.title('Curva de accuracy')
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
     return test_loader, device
 
 
