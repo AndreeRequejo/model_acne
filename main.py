@@ -1,11 +1,9 @@
 # main.py
 
 import torch
-torch.tensor([0.], device='cuda')
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from tqdm import tqdm
 import os
-
 # Importar módulos locales
 from config import *
 from dataset import ClassificationDataset, data_split, load_data
@@ -17,7 +15,7 @@ from training import train_one_epoch, test_result
 def create_dataloaders():
     """Create training, validation and test dataloaders"""
     # Load data
-    train_df, test_df = load_data(TRAIN_FILES[5], TEST_FILES[5])
+    train_df, test_df = load_data(TRAIN_FILES[4], TEST_FILES[4])
     
     # Split training data
     x_train, x_val, y_train, y_val = data_split(train_df, VALIDATION_SPLIT)

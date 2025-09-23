@@ -6,6 +6,9 @@ import torch.nn.functional as F
 from PIL import Image, ImageTk
 import numpy as np
 
+import sys, os
+sys.path.append(os.path.abspath("../"))
+
 # Importar módulos locales
 from config import TEST_TRANSFORM, CLASS_NAMES
 from model import MyNet
