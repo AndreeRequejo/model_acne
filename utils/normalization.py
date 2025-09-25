@@ -1,21 +1,15 @@
 import pandas as pd
 import os
 
+# Obtener la ruta absoluta de la carpeta base (raíz del proyecto)
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
 TRAIN_FILES = [
-    "../ACNE04/NNEW_trainval_0.txt",
-    "../ACNE04/NNEW_trainval_1.txt",
-    "../ACNE04/NNEW_trainval_2.txt",
-    "../ACNE04/NNEW_trainval_3.txt",
-    "../ACNE04/NNEW_trainval_4.txt",
-    "../ACNE04/NNEW_trainval_5.txt",
+    os.path.join(BASE_DIR, "ACNE04", f"NNEW_trainval_{i}.txt") for i in range(5)
 ]
 
 TEST_FILES = [
-    "../ACNE04/NNEW_test_0.txt",
-    "../ACNE04/NNEW_test_1.txt",
-    "../ACNE04/NNEW_test_2.txt",
-    "../ACNE04/NNEW_test_3.txt",
-    "../ACNE04/NNEW_test_4.txt"
+    os.path.join(BASE_DIR, "ACNE04", f"NNEW_test_{i}.txt") for i in range(5)
 ]
 
 def normalize_labels(file_list, prefix="NORMALIZED"):
