@@ -33,6 +33,8 @@ def train_one_epoch(
         loss = criterion(output.type(torch.FloatTensor), target.type(torch.LongTensor))
         # backward-pass: compute-gradient-of-the-loss-wrt-model-parameters
         loss.backward()
+        # gradient clipping to prevent exploding gradients - más conservador
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         # perform-a-ingle-optimization-step (parameter-update)
         optimizer.step()
         # update-training-loss

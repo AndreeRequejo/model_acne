@@ -33,7 +33,7 @@ IMAGE_PATH = "ACNE04/JPEGImages"
 
 # TRAINING PARAMETERS
 BATCH_SIZE = 16
-NUM_EPOCHS = 10
+NUM_EPOCHS = 50
 LEARNING_RATE = 0.0001
 VALIDATION_SPLIT = 0.2
 SMOOTHING = 0.12
@@ -62,6 +62,7 @@ TEST_TRANSFORM = torchvision.transforms.Compose([
 
 # MODEL SAVE PATH
 MODEL_SAVE_PATH = "./acne_model.pt"
+MODEL_PESOS_PATH = "core/best.pt"
 
 # CLASS NAMES (ajusta según tu dataset)
 CLASS_NAMES = [

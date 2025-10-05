@@ -15,7 +15,7 @@ from training import train_one_epoch, test_result
 def create_dataloaders():
     """Create training, validation and test dataloaders"""
     # Load data
-    train_df, test_df = load_data(TRAIN_FILES[4], TEST_FILES[4])
+    train_df, test_df = load_data(TRAIN_FILES[8], TEST_FILES[8])
     
     # Split training data
     x_train, x_val, y_train, y_val = data_split(train_df, VALIDATION_SPLIT)
@@ -35,19 +35,28 @@ def create_dataloaders():
 
 def setup_training():
     """Setup model, optimizer, scheduler and loss function"""
+    # Detectar dispositivo disponible
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Usando dispositivo: {device}")
+
+    # Inicializar contexto CUDA si está disponible
+    if device.type == 'cuda':
+        torch.cuda.init()
+        torch.cuda.empty_cache()
+    
     # Model
-    model = MyNet().cuda()
+    model = MyNet().to(device)
     
     # Test model with dummy input
-    test_input = torch.ones((16, 3, 224, 224)).cuda()
+    test_input = torch.ones((16, 3, 224, 224)).to(device)
     model(test_input)
     
-    # Optimizer and scheduler
-    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
-    scheduler = ReduceLROnPlateau(optimizer, "min", patience=4, factor=0.5)
+    # Optimizer and scheduler - configuración más conservadora
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE * 0.5, betas=(0.9, 0.999), eps=1e-08, weight_decay=1e-4)
+    scheduler = ReduceLROnPlateau(optimizer, "min", patience=6, factor=0.7, min_lr=1e-7)
     
     # Loss function
-    criterion = LabelSmoothingLoss(smoothing=SMOOTHING)
+    criterion = LabelSmoothingLoss(smoothing=0.1)
     
     # Metrics
     train_metrics = Metrics(["accuracy_score", "f1_score"])
@@ -61,8 +70,7 @@ def train_model():
     # Setup
     import matplotlib.pyplot as plt
     train_loader, val_loader, test_loader = create_dataloaders()
-    device = torch.device("cuda")
-
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Si el modelo ya existe, cargarlo y continuar entrenamiento
     if os.path.exists(MODEL_SAVE_PATH):
@@ -70,9 +78,12 @@ def train_model():
         model = torch.load(MODEL_SAVE_PATH, map_location=device, weights_only=False)
         model = model.to(device)
         # Se inicializan de nuevo optimizer, scheduler, etc. para continuar
-        optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
+        optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, betas=(0.9, 0.999), eps=1e-08, weight_decay=1e-4)
         scheduler = ReduceLROnPlateau(optimizer, "min", patience=4, factor=0.5)
-        criterion = LabelSmoothingLoss(smoothing=SMOOTHING)
+        
+        # Loss function
+        criterion = LabelSmoothingLoss(smoothing=0.1)
+
         train_metrics = Metrics(["accuracy_score", "f1_score"])
         val_metrics = Metrics(["accuracy_score", "f1_score"])
     else:
@@ -92,6 +103,8 @@ def train_model():
 
     # Training loop
     best_val_acc = 0.0
+    patience = 5
+    no_improve = 0
     print("Begin training process")
 
     for i in tqdm(range(NUM_EPOCHS)):
@@ -120,20 +133,21 @@ def train_model():
         print(val_result)
         print("\n")
 
-        # Save best model
-        if loss < 0.04:
-            continue
-
+        # Save best model and early stopping
         if best_val_acc < float(val_result["accuracy_score"]):
-            print(f"Validation accuracy= {val_result['accuracy_score']} ===> Save best epoch")
             best_val_acc = val_result["accuracy_score"]
             torch.save(model, MODEL_SAVE_PATH)
+            torch.save(model.state_dict(), MODEL_PESOS_PATH)
+            no_improve = 0
+            print(f"Validation accuracy= {best_val_acc} ===> Save best epoch")
         else:
+            no_improve += 1
             print(f"Validation accuracy= {val_result['accuracy_score']} ===> No saving")
-            continue
-
-    # Graficar curva de aprendizaje
-    epochs = range(1, NUM_EPOCHS + 1)
+            if no_improve >= patience:
+                print(f"Early stopping activado después de {i + 1} épocas")
+                break
+    
+    epochs = range(1, len(train_losses) + 1)
     plt.figure(figsize=(12, 5))
     plt.subplot(1, 2, 1)
     plt.plot(epochs, train_losses, label='Pérdida entrenamiento')
@@ -166,7 +180,7 @@ def evaluate_model(test_loader, device):
     
     try:
         # Crear modelo y cargar solo los pesos
-        test_model = MyNet().cuda()
+        test_model = MyNet().to(device)
         test_model.load_state_dict(torch.load(weights_path, weights_only=True))
         test_model = test_model.to(device)
     except:

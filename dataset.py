@@ -65,6 +65,6 @@ def data_split(data, test_size):
 
 def load_data(train_file, test_file):
     """Cargar datos de entrenamiento y prueba desde archivos"""
-    train_df = pd.read_csv(train_file, names=['path','label','leisons'], sep='  ', engine='python')
-    test_df = pd.read_csv(test_file, names=['path','label','leisons'], sep='  ', engine='python')
+    train_df = pd.read_csv(train_file, names=['path','label','leisons'], sep=' ', engine='python')
+    test_df = pd.read_csv(test_file, names=['path','label','leisons'], sep=' ', engine='python')
     return train_df, test_df

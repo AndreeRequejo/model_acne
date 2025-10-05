@@ -22,19 +22,17 @@ class MyNet(nn.Module):
     def __init__(self):
         super(MyNet, self).__init__()
 
-        self.cnn = torchvision.models.efficientnet_v2_m(weights=EfficientNet_V2_M_Weights.DEFAULT).cuda()
-        # self.cnn = torchvision.models.resnet50(weights=ResNet50_Weights.DEFAULT).cuda()
-        # self.cnn = torchvision.models.vgg16(weights=VGG16_Weights.DEFAULT).cuda()
+        self.cnn = torchvision.models.efficientnet_v2_m(weights=EfficientNet_V2_M_Weights.DEFAULT)
+        # self.cnn = torchvision.models.resnet50(weights=ResNet50_Weights.DEFAULT)
+        # self.cnn = torchvision.models.vgg16(weights=VGG16_Weights.DEFAULT)
         for param in self.cnn.parameters():
             param.requires_grad = True
         self.cnn.classifier = nn.Sequential(
-            nn.Linear(self.cnn.classifier[1].in_features, 512),
-            nn.Dropout(p=0.2),
+            nn.Linear(self.cnn.classifier[1].in_features, 128),
+            nn.BatchNorm1d(128),
             nn.ReLU(),
-            nn.Linear(512, 128),
-            nn.Dropout(p=0.2),
-            nn.Linear(128, 64),
-            nn.Linear(64, 4),     
+            nn.Dropout(p=0.4),
+            nn.Linear(128, 3)
         )
         
         # self.cnn.fc = nn.Sequential(
@@ -44,7 +42,7 @@ class MyNet(nn.Module):
         #     nn.Linear(512, 128),
         #     nn.Dropout(p=0.2),
         #     nn.Linear(128, 64),
-        #     nn.Linear(64, 4)
+        #     nn.Linear(64, 3)
         # )
         
         # self.cnn.classifier = nn.Sequential(
@@ -57,7 +55,7 @@ class MyNet(nn.Module):
         #     nn.Linear(512, 128),
         #     nn.Dropout(p=0.2),
         #     nn.Linear(128, 64),
-        #     nn.Linear(64, 4)
+        #     nn.Linear(64, 3)
         # )
         
     def forward(self, img):
