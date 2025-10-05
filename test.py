@@ -35,7 +35,7 @@ if __name__ == "__main__":
     
     # Cargar datos de test
     print("Cargando datos de test...")
-    test_df = pd.read_csv(TEST_FILES[0], names=['path','label','leisions'], sep='  ', engine='python')
+    test_df = pd.read_csv(TEST_FILES[5], names=['path','label','leisions'], sep=' ', engine='python')
     testset = ClassificationDataset(test_df, data_path=IMAGE_PATH, transform=TEST_TRANSFORM, training=True)
     test_loader = torch.utils.data.DataLoader(testset, batch_size=1, shuffle=False)
     print(f"{len(test_df)} muestras de test cargadas")
