@@ -15,7 +15,7 @@ from training import train_one_epoch, test_result
 def create_dataloaders():
     """Create training, validation and test dataloaders"""
     # Load data
-    train_df, test_df = load_data(TRAIN_FILES[8], TEST_FILES[8])
+    train_df, test_df = load_data(TRAIN_FILES[5], TEST_FILES[5])
     
     # Split training data
     x_train, x_val, y_train, y_val = data_split(train_df, VALIDATION_SPLIT)

@@ -25,16 +25,22 @@ class MyNet(nn.Module):
         self.cnn = torchvision.models.efficientnet_v2_m(weights=EfficientNet_V2_M_Weights.DEFAULT)
         # self.cnn = torchvision.models.resnet50(weights=ResNet50_Weights.DEFAULT)
         # self.cnn = torchvision.models.vgg16(weights=VGG16_Weights.DEFAULT)
+
         for param in self.cnn.parameters():
             param.requires_grad = True
+        
+        # ARQUITECTURA PARA EFFICIENTNET_V2_M
         self.cnn.classifier = nn.Sequential(
-            nn.Linear(self.cnn.classifier[1].in_features, 128),
-            nn.BatchNorm1d(128),
+            nn.Linear(self.cnn.classifier[1].in_features, 512),
+            nn.Dropout(p=0.2),
             nn.ReLU(),
-            nn.Dropout(p=0.4),
-            nn.Linear(128, 3)
+            nn.Linear(512, 128),
+            nn.Dropout(p=0.3),
+            nn.Linear(128, 64),
+            nn.Linear(64, 4),     
         )
         
+        # ARQUITECTURA PARA RESNET50
         # self.cnn.fc = nn.Sequential(
         #     nn.Linear(self.cnn.fc.in_features, 512),
         #     nn.Dropout(p=0.2),
@@ -45,6 +51,7 @@ class MyNet(nn.Module):
         #     nn.Linear(64, 3)
         # )
         
+        # ARQUITECTURA PARA VGG16
         # self.cnn.classifier = nn.Sequential(
         #     nn.Linear(25088, 4096),
         #     nn.ReLU(True),
