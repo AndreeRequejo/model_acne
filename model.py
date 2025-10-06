@@ -35,7 +35,7 @@ class MyNet(nn.Module):
             nn.Dropout(p=0.2),
             nn.ReLU(),
             nn.Linear(512, 128),
-            nn.Dropout(p=0.3),
+            nn.Dropout(p=0.2),
             nn.Linear(128, 64),
             nn.Linear(64, 4),     
         )
