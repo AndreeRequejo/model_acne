@@ -38,7 +38,7 @@ class Metrics:
 def plot_learning_curves_advanced(train_losses, val_losses, train_accuracies, val_accuracies):
     """Crear curvas de aprendizaje más profesionales con matplotlib"""
     
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
     epochs = np.arange(1, len(train_losses) + 1)
     
     # 1. Curva de pérdida con área sombreada
@@ -65,20 +65,25 @@ def plot_learning_curves_advanced(train_losses, val_losses, train_accuracies, va
 
     plt.tight_layout()
     plt.show()
+    
+    # Estadísticas adicionales
+    print("\n" + "="*50)
+    print("ESTADÍSTICAS DE ENTRENAMIENTO")
+    print("="*50)
+    print(f"Mejor accuracy de entrenamiento: {max(train_accuracies):.4f}")
+    print(f"Mejor accuracy de validación: {max(val_accuracies):.4f}")
+    print(f"Pérdida final de entrenamiento: {train_losses[-1]:.4f}")
+    print(f"Pérdida final de validación: {val_losses[-1]:.4f}")
+    print("="*50)
 
 
 def plot_training_history_detailed(train_losses, val_losses, train_accuracies, val_accuracies):
     """Visualización detallada del historial de entrenamiento"""
     
-    fig = plt.figure(figsize=(16, 12))
-    
-    # Layout más complejo
-    gs = fig.add_gridspec(3, 3, height_ratios=[2, 2, 1], width_ratios=[1, 1, 1])
-    
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
     epochs = np.arange(1, len(train_losses) + 1)
     
-    # Gráfico principal - pérdida
-    ax1 = fig.add_subplot(gs[0, :2])
+    # Gráfico de pérdida
     ax1.plot(epochs, train_losses, 'b-o', label='Entrenamiento', markersize=4, linewidth=2)
     ax1.plot(epochs, val_losses, 'r-s', label='Validación', markersize=4, linewidth=2)
     ax1.set_xlabel('Época')
@@ -87,15 +92,14 @@ def plot_training_history_detailed(train_losses, val_losses, train_accuracies, v
     ax1.legend(fontsize=12)
     ax1.grid(True, alpha=0.3)
     
-    # Gráfico principal - accuracy
-    ax3 = fig.add_subplot(gs[1, :2])
-    ax3.plot(epochs, train_accuracies, 'g-o', label='Entrenamiento', markersize=4, linewidth=2)
-    ax3.plot(epochs, val_accuracies, 'm-s', label='Validación', markersize=4, linewidth=2)
-    ax3.set_xlabel('Época')
-    ax3.set_ylabel('Accuracy')
-    ax3.set_title('Evolución de la Precisión Durante el Entrenamiento', fontsize=14, fontweight='bold')
-    ax3.legend(fontsize=12)
-    ax3.grid(True, alpha=0.3)
+    # Gráfico de accuracy
+    ax2.plot(epochs, train_accuracies, 'g-o', label='Entrenamiento', markersize=4, linewidth=2)
+    ax2.plot(epochs, val_accuracies, 'm-s', label='Validación', markersize=4, linewidth=2)
+    ax2.set_xlabel('Época')
+    ax2.set_ylabel('Accuracy')
+    ax2.set_title('Evolución de la Precisión Durante el Entrenamiento', fontsize=14, fontweight='bold')
+    ax2.legend(fontsize=12)
+    ax2.grid(True, alpha=0.3)
 
     plt.tight_layout()
     plt.show()

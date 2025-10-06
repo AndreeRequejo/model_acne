@@ -15,7 +15,7 @@ from training import train_one_epoch, test_result
 def create_dataloaders():
     """Create training, validation and test dataloaders"""
     # Load data
-    train_df, test_df = load_data(TRAIN_FILES[5], TEST_FILES[5])
+    train_df, test_df = load_data(TRAIN_FILES[7], TEST_FILES[7])
     
     # Split training data
     x_train, x_val, y_train, y_val = data_split(train_df, VALIDATION_SPLIT)
@@ -52,8 +52,8 @@ def setup_training():
     model(test_input)
     
     # Optimizer and scheduler - configuración más conservadora
-    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE * 0.5, betas=(0.9, 0.999), eps=1e-08, weight_decay=1e-4)
-    scheduler = ReduceLROnPlateau(optimizer, "min", patience=6, factor=0.7, min_lr=1e-7)
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE * 0.5, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
+    scheduler = ReduceLROnPlateau(optimizer, "min", patience=4, factor=0.5)
     
     # Loss function
     criterion = LabelSmoothingLoss(smoothing=0.1)
@@ -103,10 +103,15 @@ def train_model():
 
     # Training loop
     best_val_acc = 0.0
-    patience = 5
-    no_improve = 0
     print("Begin training process")
 
+    # =================== VERSIÓN CON EARLY STOPPING ===================
+    # patience = 5
+    # no_improve = 0
+    
+    # =================== VERSIÓN SIN EARLY STOPPING ===================
+    # Ejecutar todas las épocas completas
+    
     for i in tqdm(range(NUM_EPOCHS)):
         loss, val_loss, train_result, val_result = train_one_epoch(
             model,
@@ -133,19 +138,23 @@ def train_model():
         print(val_result)
         print("\n")
 
-        # Save best model and early stopping
+        # Save best model
         if best_val_acc < float(val_result["accuracy_score"]):
             best_val_acc = val_result["accuracy_score"]
             torch.save(model, MODEL_SAVE_PATH)
             torch.save(model.state_dict(), MODEL_PESOS_PATH)
-            no_improve = 0
             print(f"Validation accuracy= {best_val_acc} ===> Save best epoch")
+            
+            # =================== EARLY STOPPING (COMENTADO) ===================
+            # no_improve = 0
         else:
-            no_improve += 1
             print(f"Validation accuracy= {val_result['accuracy_score']} ===> No saving")
-            if no_improve >= patience:
-                print(f"Early stopping activado después de {i + 1} épocas")
-                break
+            
+            # =================== EARLY STOPPING (COMENTADO) ===================
+            # no_improve += 1
+            # if no_improve >= patience:
+            #     print(f"Early stopping activado después de {i + 1} épocas")
+            #     break
     
     # Usar las nuevas funciones de visualización
     plot_learning_curves_advanced(train_losses, val_losses, train_accuracies, val_accuracies)
