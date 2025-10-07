@@ -5,9 +5,13 @@ import torch
 import torch.nn.functional as F
 from PIL import Image, ImageTk
 import numpy as np
+import time
 
 import sys, os
-sys.path.append(os.path.abspath("../"))
+
+# Agregar el directorio padre al path de Python
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, parent_dir)
 
 # Importar módulos locales
 from config import TEST_TRANSFORM, CLASS_NAMES
@@ -17,7 +21,7 @@ class AcneClassifierGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Clasificador de Severidad de Acné")
-        self.root.geometry("800x600")
+        self.root.geometry("1000x800")  # Ventana más grande
         
         self.model = None
         self.device = None
@@ -56,7 +60,7 @@ class AcneClassifierGUI:
         self.image_frame.pack(pady=(0, 20))
         
         self.image_label = tk.Label(self.image_frame, text="No hay imagen cargada", 
-                                   width=40, height=15, bg="lightgray")
+                                   width=60, height=25, bg="lightgray")
         self.image_label.pack(padx=10, pady=10)
         
         # Frame para resultados
@@ -123,13 +127,25 @@ class AcneClassifierGUI:
                 image = Image.open(file_path).convert('RGB')
                 self.current_image = image
                 
-                # Redimensionar para mostrar
+                # Redimensionar para mostrar (tamaño más grande)
                 display_image = image.copy()
-                display_image.thumbnail((300, 300), Image.Resampling.LANCZOS)
+                
+                # Calcular nuevo tamaño manteniendo proporción
+                max_size = 400  # Tamaño máximo
+                original_width, original_height = display_image.size
+                
+                if original_width > original_height:
+                    new_width = max_size
+                    new_height = int((original_height * max_size) / original_width)
+                else:
+                    new_height = max_size
+                    new_width = int((original_width * max_size) / original_height)
+                
+                display_image = display_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
                 
                 # Convertir para tkinter
                 photo = ImageTk.PhotoImage(display_image)
-                self.image_label.configure(image=photo, text="")
+                self.image_label.configure(image=photo, text="", width=new_width, height=new_height)
                 self.image_label.image = photo
                 
                 # Habilitar botón de predicción
@@ -154,6 +170,9 @@ class AcneClassifierGUI:
             self.status_var.set("Clasificando...")
             self.root.update()
             
+            # Iniciar medición de tiempo
+            start_time = time.time()
+            
             # Preprocesar imagen
             image_tensor = TEST_TRANSFORM(self.current_image).unsqueeze(0).to(self.device)
             
@@ -164,40 +183,34 @@ class AcneClassifierGUI:
                 predicted_class = torch.argmax(probabilities, dim=1).item()
                 confidence = torch.max(probabilities).item()
                 probs_array = probabilities.cpu().numpy()[0]
+                
+                # Validar que la clase predicha esté en el rango válido
+                if predicted_class >= len(CLASS_NAMES):
+                    raise ValueError(f"Clase predicha {predicted_class} fuera de rango. Clases disponibles: {len(CLASS_NAMES)}")
+            
+            # Calcular tiempo de procesamiento
+            processing_time = time.time() - start_time
             
             # Mostrar resultados
-            self.display_results(predicted_class, confidence, probs_array)
+            self.display_results(predicted_class, confidence, probs_array, processing_time)
             self.status_var.set("Clasificación completada")
             
         except Exception as e:
             messagebox.showerror("Error", f"Error durante la predicción:\n{str(e)}")
             self.status_var.set("Error en predicción")
     
-    def display_results(self, predicted_class, confidence, probabilities):
+    def display_results(self, predicted_class, confidence, probabilities, processing_time):
         """Mostrar resultados de la clasificación"""
         
-        # Información de severidad
-        severity_info = {
-            0: ("LEVE", "Acné leve con pocos comedones"),
-            1: ("MODERADO", "Acné moderado con pápulas"),
-            2: ("SEVERO", "Acné severo con pústulas"),
-            3: ("MUY SEVERO", "Acné muy severo con nódulos")
-        }
-        
-        severity, description = severity_info.get(predicted_class, ("DESCONOCIDO", ""))
-        
-        # Formatear texto de resultados
+        # Formatear texto de resultados simplificado
         result_text = f"""
 ╔══════════════════════════════════════════════════════════╗
 ║                    RESULTADO DE CLASIFICACIÓN            ║
 ╠══════════════════════════════════════════════════════════╣
 
-🏷️  SEVERIDAD PREDICHA: {CLASS_NAMES[predicted_class]}
-📊 NIVEL: {severity}
+🏷️ PREDICCIÓN: {CLASS_NAMES[predicted_class]}
 🎯 CONFIANZA: {confidence:.4f} ({confidence*100:.2f}%)
-
-📝 DESCRIPCIÓN:
-   {description}
+⏱️  TIEMPO DE PROCESAMIENTO: {processing_time*1000:.2f} ms
 
 📊 PROBABILIDADES POR CLASE:
 ╠══════════════════════════════════════════════════════════╣
@@ -205,37 +218,12 @@ class AcneClassifierGUI:
         
         # Agregar probabilidades
         for i, prob in enumerate(probabilities):
-            marker = ">>> " if i == predicted_class else "    "
-            result_text += f"{marker}{CLASS_NAMES[i]:15}: {prob:.4f} ({prob*100:.2f}%)\n"
-        
-        result_text += f"""
-╠══════════════════════════════════════════════════════════╣
-💡 RECOMENDACIONES:
-"""
-        
-        # Recomendaciones según severidad
-        recommendations = {
-            0: "• Limpieza facial suave diaria\n• Productos no comedogénicos\n• Evitar tocar el rostro",
-            1: "• Productos con ácido salicílico\n• Considerar consulta dermatológica\n• Mantener rutina de limpieza",
-            2: "• Consulta dermatológica recomendada\n• Posible tratamiento tópico intensivo\n• Evitar auto-medicación",
-            3: "• CONSULTA DERMATOLÓGICA URGENTE\n• Tratamiento médico necesario\n• Posibles medicamentos sistémicos"
-        }
-        
-        result_text += f"   {recommendations.get(predicted_class, 'Consultar especialista')}\n"
-        
-        # Advertencia si confianza es baja
-        if confidence < 0.6:
-            result_text += f"""
-╠══════════════════════════════════════════════════════════╣
-⚠️  ADVERTENCIA: CONFIANZA BAJA ({confidence:.2f})
-   Se recomienda obtener segunda opinión médica
-"""
+            if i < len(CLASS_NAMES):  # Protección contra índices fuera de rango
+                marker = ">>> " if i == predicted_class else "    "
+                result_text += f"{marker}{CLASS_NAMES[i]:15}: {prob:.4f} ({prob*100:.2f}%)\n"
         
         result_text += """
 ╚══════════════════════════════════════════════════════════╝
-
-NOTA: Este es un sistema de apoyo diagnóstico.
-Siempre consulte con un dermatólogo para diagnóstico definitivo.
 """
         
         # Mostrar en el widget de texto
