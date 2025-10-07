@@ -35,12 +35,12 @@ def setup_model_and_training(device, previous_weights_path=None):
     if previous_weights_path and os.path.exists(previous_weights_path):
         try:
             model.load_state_dict(torch.load(previous_weights_path, map_location=device, weights_only=True))
-            print(f"Loaded previous weights from: {previous_weights_path}")
+            print(f"Pesos cargados desde: {previous_weights_path}")
         except Exception as e:
-            print(f"Could not load previous weights: {e}")
-            print("Starting with default EfficientNet weights")
+            print(f"No se pudieron cargar los pesos previos: {e}")
+            print("Iniciando con pesos por defecto de EfficientNet")
     else:
-        print("Starting with default EfficientNet weights")
+        print("Iniciando con pesos por defecto de EfficientNet")
     
     # Probar modelo con entrada de prueba
     test_input = torch.ones((16, 3, 224, 224)).to(device)
@@ -66,12 +66,12 @@ def get_model_save_paths(fold_index):
 def train_single_fold(fold_index, previous_weights_path=None):
     """Entrenar un solo fold con aprendizaje incremental opcional"""
     
-    print(f"\nStarting training for fold {fold_index}")
+    print(f"\nIniciando entrenamiento para fold {fold_index}")
     print("="*50)
     
     # Configurar dispositivo de cómputo
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
+    print(f"Usando dispositivo: {device}")
     
     if device.type == 'cuda':
         torch.cuda.init()
@@ -79,7 +79,7 @@ def train_single_fold(fold_index, previous_weights_path=None):
     
     # Crear cargadores de datos
     train_loader, val_loader, test_loader = create_dataloaders_for_fold(fold_index)
-    print(f"Data loaded - Train: {len(train_loader.dataset)}, Val: {len(val_loader.dataset)}, Test: {len(test_loader.dataset)}")
+    print(f"Datos cargados - Entrenamiento: {len(train_loader.dataset)}, Validaci\u00f3n: {len(val_loader.dataset)}, Prueba: {len(test_loader.dataset)}")
     
     # Configurar modelo y componentes de entrenamiento
     model, optimizer, scheduler, criterion, train_metrics, val_metrics = setup_model_and_training(device, previous_weights_path)
@@ -96,7 +96,7 @@ def train_single_fold(fold_index, previous_weights_path=None):
     
     # Bucle de entrenamiento
     best_val_acc = 0.0
-    print(f"Starting training for {NUM_EPOCHS} epochs...")
+    print(f"Iniciando entrenamiento para {NUM_EPOCHS} \u00e9pocas...")
     
     for epoch in tqdm(range(NUM_EPOCHS)):
         loss, val_loss, train_result, val_result = train_one_epoch(
@@ -111,8 +111,8 @@ def train_single_fold(fold_index, previous_weights_path=None):
         train_accuracies.append(float(train_result["accuracy_score"]))
         val_accuracies.append(float(val_result["accuracy_score"]))
         
-        print(f"Epoch {epoch + 1}/{NUM_EPOCHS} - Train Loss: {loss:.4f}, Val Loss: {val_loss:.4f}, "
-              f"Train Acc: {train_result['accuracy_score']:.4f}, Val Acc: {val_result['accuracy_score']:.4f}")
+        print(f"Época {epoch + 1}/{NUM_EPOCHS} - Pérdida Entren.: {loss:.4f}, Pérdida Val.: {val_loss:.4f}, "
+              f"Precis. Entren.: {train_result['accuracy_score']:.4f}, Precis. Val.: {val_result['accuracy_score']:.4f}")
         
         # Guardar mejor modelo
         if best_val_acc < float(val_result["accuracy_score"]):
@@ -122,13 +122,13 @@ def train_single_fold(fold_index, previous_weights_path=None):
             torch.save(model, model_path)
             torch.save(model.state_dict(), weights_path)
             
-            print(f"New best model saved with validation accuracy: {best_val_acc:.4f}")
+            print(f"Nuevo mejor modelo guardado con precisi\u00f3n de validaci\u00f3n: {best_val_acc:.4f}")
     
     # Graficar resultados
     plot_learning_curves_advanced(train_losses, val_losses, train_accuracies, val_accuracies)
     plot_training_history_detailed(train_losses, val_losses, train_accuracies, val_accuracies)
     
-    print(f"Fold {fold_index} completed with best validation accuracy: {best_val_acc:.4f}")
+    print(f"Fold {fold_index} completado con mejor precisi\u00f3n de validaci\u00f3n: {best_val_acc:.4f}")
     
     return test_loader, val_loader, device, weights_path
 
@@ -156,11 +156,11 @@ def evaluate_fold(fold_index, test_loader, val_loader, device):
     val_accuracy = accuracy_score(val_labels.flatten(), val_preds)
     test_accuracy = accuracy_score(test_labels.flatten(), test_preds)
     
-    print(f"\nFold {fold_index} Results:")
+    print(f"\nResultados del Fold {fold_index}:")
     print("-" * 30)
-    print(f"Validation Accuracy: {val_accuracy:.4f} ({val_accuracy*100:.2f}%)")
-    print(f"Test Accuracy: {test_accuracy:.4f} ({test_accuracy*100:.2f}%)")
-    print("\nClassification Report (Test Set):")
+    print(f"Precisi\u00f3n de Validaci\u00f3n: {val_accuracy:.4f} ({val_accuracy*100:.2f}%)")
+    print(f"Precisi\u00f3n de Prueba: {test_accuracy:.4f} ({test_accuracy*100:.2f}%)")
+    print("\nReporte de Clasificaci\u00f3n (Conjunto de Prueba):")
     print(classification_report(test_labels.flatten(), test_preds, target_names=CLASS_NAMES))
     
     return {
@@ -170,79 +170,43 @@ def evaluate_fold(fold_index, test_loader, val_loader, device):
     }
 
 
-def incremental_training(start_fold, end_fold):
+def train_fold_with_best_weights(fold_index):
     """
-    Realizar entrenamiento incremental desde start_fold hasta end_fold.
-    Cada fold usa los pesos del fold anterior como punto de partida.
+    Entrenar un fold específico usando los pesos de core/best.pt como punto de partida
     
     Args:
-        start_fold: Índice del fold inicial
-        end_fold: Índice del fold final (inclusive)
+        fold_index: Índice del fold a entrenar (usa TRAIN_FILES[fold_index] y TEST_FILES[fold_index])
     """
     
-    print("INCREMENTAL TRAINING")
-    print("="*50)
-    print(f"Training folds from {start_fold} to {end_fold}")
-    print("Each fold will use the best weights from the previous fold")
-    print("="*50)
+    best_weights_path = "core/best.pt"
     
-    results = []
-    previous_weights = None
-    
-    for fold_idx in range(start_fold, end_fold + 1):
-        print(f"\nTraining fold {fold_idx}")
-        
-        # Entrenar fold
-        test_loader, val_loader, device, current_weights_path = train_single_fold(fold_idx, previous_weights)
-        
-        # Evaluar fold
-        fold_result = evaluate_fold(fold_idx, test_loader, val_loader, device)
-        results.append(fold_result)
-        
-        # Establecer pesos actuales como previos para el siguiente fold
-        previous_weights = current_weights_path
-        
-        print(f"Fold {fold_idx} completed")
-    
-    # Imprimir resumen
-    print("\n" + "="*50)
-    print("TRAINING SUMMARY")
-    print("="*50)
-    for result in results:
-        print(f"Fold {result['fold']}: Val Acc = {result['val_accuracy']:.4f}, Test Acc = {result['test_accuracy']:.4f}")
-    
-    if len(results) > 1:
-        val_accs = [r['val_accuracy'] for r in results]
-        test_accs = [r['test_accuracy'] for r in results]
-        print(f"\nAverage Validation Accuracy: {sum(val_accs)/len(val_accs):.4f}")
-        print(f"Average Test Accuracy: {sum(test_accs)/len(test_accs):.4f}")
-    
+    print(f"Entrenando fold {fold_index} usando pesos de {best_weights_path}")
     print("="*50)
     
-    return results
-
-
-def train_single_fold_standalone(fold_index):
-    """Entrenar un solo fold sin aprendizaje incremental (inicio desde cero)"""
-    test_loader, val_loader, device, _ = train_single_fold(fold_index, previous_weights_path=None)
+    # Verificar si existen los pesos
+    if os.path.exists(best_weights_path):
+        print(f"Cargando pesos desde: {best_weights_path}")
+    else:
+        print(f"Archivo {best_weights_path} no encontrado, iniciando con pesos de EfficientNet")
+        best_weights_path = None
+    
+    # Entrenar el fold específico
+    test_loader, val_loader, device, current_weights_path = train_single_fold(fold_index, best_weights_path)
+    
+    # Evaluar el fold
     result = evaluate_fold(fold_index, test_loader, val_loader, device)
+    
+    print(f"Fold {fold_index} completado con precisión de prueba: {result['test_accuracy']:.4f}")
+    
     return result
 
 
 if __name__ == "__main__":
-    # Ejemplos de uso:
+    # Entrenar un fold específico usando pesos de core/best.pt
+    result = train_fold_with_best_weights(5)
     
-    # Entrenar un solo fold desde cero
-    # result = train_single_fold_standalone(5)
-    
-    # Entrenar múltiples folds incrementalmente
-    # results = incremental_training(5, 7)  # Entrena folds 5, 6, 7 incrementalmente
-    
-    # Por defecto: Entrenar folds normalizados incrementalmente
-    # results = incremental_training(5, 9)  # Entrena folds 5-9 incrementalmente
-    
-    print(f"\nAll models saved in 'core/' directory")
-    print("Available model files:")
+    print(f"\nTodos los modelos guardados en directorio 'core/'")
+    print("Archivos de modelo disponibles:")
     for fold in range(5, 10):
         model_path, weights_path = get_model_save_paths(fold)
         if os.path.exists(weights_path):
