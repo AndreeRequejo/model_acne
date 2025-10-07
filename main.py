@@ -15,7 +15,7 @@ from training import train_one_epoch, test_result
 def create_dataloaders():
     """Create training, validation and test dataloaders"""
     # Load data
-    train_df, test_df = load_data(TRAIN_FILES[7], TEST_FILES[7])
+    train_df, test_df = load_data(TRAIN_FILES[8], TEST_FILES[8])
     
     # Split training data
     x_train, x_val, y_train, y_val = data_split(train_df, VALIDATION_SPLIT)
@@ -160,11 +160,11 @@ def train_model():
     plot_learning_curves_advanced(train_losses, val_losses, train_accuracies, val_accuracies)
     plot_training_history_detailed(train_losses, val_losses, train_accuracies, val_accuracies)
 
-    return test_loader, device
+    return test_loader, val_loader, device
 
 
-def evaluate_model(test_loader, device):
-    """Evaluar el modelo en el conjunto de prueba"""
+def evaluate_model(data_loader, device, dataset_name="Test"):
+    """Evaluar el modelo en cualquier conjunto de datos"""
     from sklearn.metrics import classification_report as rp, confusion_matrix, accuracy_score
     import matplotlib.pyplot as plt
     
@@ -181,31 +181,34 @@ def evaluate_model(test_loader, device):
         test_model = torch.load(MODEL_SAVE_PATH, weights_only=False)
         test_model = test_model.to(device)
     
-    preds, labels = test_result(test_model, test_loader, device)
+    preds, labels = test_result(test_model, data_loader, device)
 
     # Calcular accuracy
     accuracy = accuracy_score(labels.flatten(), preds)
     
-    print(f"\nAccuracy: {accuracy:.4f} ({accuracy*100:.2f}%)")
+    print(f"\n{'='*55}")
+    print(f"EVALUACIÓN DEL CONJUNTO: {dataset_name.upper()}")
+    print(f"{'='*55}")
+    print(f"Accuracy: {accuracy:.4f} ({accuracy*100:.2f}%)")
     
     # Mostrar reporte de clasificación
-    print("\n" + "="*50)
-    print("Reporte de clasificación:")
-    print("="*50)
+    print("\n" + "="*55)
+    print(f"Reporte de clasificación - {dataset_name}:")
+    print("="*55)
     print(rp(labels.flatten(), preds, target_names=CLASS_NAMES))
-    print("="*50)
+    print("="*55)
 
     # Calcular y mostrar matriz de confusión
     cm = confusion_matrix(labels.flatten(), preds)
     
     print("\nMatriz de confusión:")
-    print("-"*30)
+    print("="*55)
     print(cm)
 
     # Visualizar matriz de confusión
     plt.figure(figsize=(10, 8))
     plt.imshow(cm, interpolation='nearest', cmap='Blues')
-    plt.title('Matriz de Confusión')
+    plt.title(f'Matriz de Confusión - {dataset_name}')
     plt.colorbar()
 
     # Agregar números manualmente
@@ -229,10 +232,23 @@ def evaluate_model(test_loader, device):
 
 if __name__ == "__main__":
     # Entrenar modelo
-    test_loader, device = train_model()
+    test_loader, val_loader, device = train_model()
     
-    # Evaluar modelo
-    predictions, true_labels = evaluate_model(test_loader, device)
+    print("\n" + "-"*55)
+    print("INICIANDO EVALUACIÓN COMPLETA")
+    print("-"*55)
     
-    print(f"Cantidad de predicciones del test: {len(predictions)}")
+    # Evaluar conjunto de validación (20% del train)
+    val_predictions, val_labels = evaluate_model(val_loader, device, "Validación")
+    
+    # Evaluar conjunto de test independiente
+    test_predictions, test_labels = evaluate_model(test_loader, device, "Test Independiente")
+    
+    # Resumen final
+    print("\n" + "="*55)
+    print("RESUMEN FINAL DE EVALUACIÓN")
+    print("="*55)
+    print(f"Validación (20% train): {len(val_predictions)} muestras")
+    print(f"Test independiente: {len(test_predictions)} muestras")
     print("Entrenamiento completado!")
+    print("="*55)
