@@ -15,7 +15,7 @@ from training import train_one_epoch, test_result
 def create_dataloaders():
     """Crear cargadores de datos de entrenamiento, validación y prueba"""
     # Cargar datos
-    train_df, test_df = load_data(TRAIN_FILES[8], TEST_FILES[8])
+    train_df, test_df = load_data(TRAIN_FILES[5], TEST_FILES[5])
     
     # Dividir datos de entrenamiento
     x_train, x_val, y_train, y_val = data_split(train_df, VALIDATION_SPLIT)
@@ -72,24 +72,9 @@ def train_model():
     train_loader, val_loader, test_loader = create_dataloaders()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Si el modelo ya existe, cargarlo y continuar entrenamiento
-    if os.path.exists(MODEL_SAVE_PATH):
-        print(f"Modelo encontrado en {MODEL_SAVE_PATH}. Se continuará el entrenamiento desde el modelo guardado.")
-        model = torch.load(MODEL_SAVE_PATH, map_location=device, weights_only=False)
-        model = model.to(device)
-        # Se inicializan de nuevo optimizer, scheduler, etc. para continuar
-        optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, betas=(0.9, 0.999), eps=1e-08, weight_decay=1e-4)
-        scheduler = ReduceLROnPlateau(optimizer, "min", patience=4, factor=0.5)
-        
-        # Función de pérdida
-        criterion = LabelSmoothingLoss(smoothing=0.1)
-
-        train_metrics = Metrics(["accuracy_score", "f1_score"])
-        val_metrics = Metrics(["accuracy_score", "f1_score"])
-    else:
-        # Si no existe, entrenar desde cero
-        model, optimizer, scheduler, criterion, train_metrics, val_metrics = setup_training()
-        model = model.to(device)
+    # Configurar modelo
+    model, optimizer, scheduler, criterion, train_metrics, val_metrics = setup_training()
+    model = model.to(device)
 
     # Habilitar gradientes
     for param in model.parameters():
