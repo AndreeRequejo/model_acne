@@ -110,9 +110,12 @@ def train_single_fold(fold_index, previous_weights_path=None):
         val_losses.append(val_loss)
         train_accuracies.append(float(train_result["accuracy_score"]))
         val_accuracies.append(float(val_result["accuracy_score"]))
-        
-        print(f"Época {epoch + 1}/{NUM_EPOCHS} - Pérdida Entren.: {loss:.4f}, Pérdida Val.: {val_loss:.4f}, "
-              f"Precis. Entren.: {train_result['accuracy_score']:.4f}, Precis. Val.: {val_result['accuracy_score']:.4f}")
+
+        print(f"Epoca {epoch + 1} / {NUM_EPOCHS} \n Training loss: {loss:.4f} - Otras metricas de entrenamiento: ")
+        print(f"Precision: {train_result['accuracy_score']:.4f} - F1 Score: {train_result['f1_score']:.4f}")
+        print(f" \n Validation loss : {val_loss:.4f} - Otras metricas de validacion:")
+        print(f"Precision: {val_result['accuracy_score']:.4f} - F1 Score: {val_result['f1_score']:.4f}")
+        print("\n")
         
         # Guardar mejor modelo
         if best_val_acc < float(val_result["accuracy_score"]):
@@ -122,14 +125,16 @@ def train_single_fold(fold_index, previous_weights_path=None):
             torch.save(model, model_path)
             torch.save(model.state_dict(), weights_path)
             
-            print(f"Nuevo mejor modelo guardado con precisi\u00f3n de validaci\u00f3n: {best_val_acc:.4f}")
+            print(f"Precision de validacion: {best_val_acc:.4f} ===> Save best epoch")
+        else:
+            print(f"Precision de validacion: {val_result['accuracy_score']:.4f} ===> No saving")
     
     # Graficar resultados
     plot_learning_curves_advanced(train_losses, val_losses, train_accuracies, val_accuracies)
     plot_training_history_detailed(train_losses, val_losses, train_accuracies, val_accuracies)
-    
-    print(f"Fold {fold_index} completado con mejor precisi\u00f3n de validaci\u00f3n: {best_val_acc:.4f}")
-    
+
+    print(f"Fold {fold_index} completado con mejor precision de validacion: {best_val_acc:.4f}")
+
     return test_loader, val_loader, device, weights_path
 
 

@@ -117,10 +117,10 @@ def train_model():
         train_accuracies.append(float(train_result["accuracy_score"]))
         val_accuracies.append(float(val_result["accuracy_score"]))
 
-        print(f"Epoch {i + 1} / {NUM_EPOCHS} \n Training loss: {loss} - Other training metrics: ")
-        print(train_result)
-        print(f" \n Validation loss : {val_loss} - Other validation metrics:")
-        print(val_result)
+        print(f"Epoca {i + 1} / {NUM_EPOCHS} \n Training loss: {loss:.4f} - Otras metricas de entrenamiento: ")
+        print(f"Precision: {train_result['accuracy_score']:.4f} - F1 Score: {train_result['f1_score']:.4f}")
+        print(f" \n Validation loss : {val_loss:.4f} - Otras metricas de validacion:")
+        print(f"Precision: {val_result['accuracy_score']:.4f} - F1 Score: {val_result['f1_score']:.4f}")
         print("\n")
 
         # Guardar mejor modelo
@@ -128,13 +128,13 @@ def train_model():
             best_val_acc = val_result["accuracy_score"]
             torch.save(model, MODEL_SAVE_PATH)
             torch.save(model.state_dict(), MODEL_PESOS_PATH)
-            print(f"Validation accuracy= {best_val_acc} ===> Save best epoch")
-            
+            print(f"Precision de validacion: {best_val_acc:.4f} ===> Save best epoch")
+
             # =================== EARLY STOPPING (COMENTADO) ===================
             # no_improve = 0
         else:
-            print(f"Validation accuracy= {val_result['accuracy_score']} ===> No saving")
-            
+            print(f"Precision de validacion: {val_result['accuracy_score']:.4f} ===> No saving")
+
             # =================== EARLY STOPPING (COMENTADO) ===================
             # no_improve += 1
             # if no_improve >= patience:
