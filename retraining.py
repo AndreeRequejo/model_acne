@@ -111,9 +111,9 @@ def train_single_fold(fold_index, previous_weights_path=None):
         train_accuracies.append(float(train_result["accuracy_score"]))
         val_accuracies.append(float(val_result["accuracy_score"]))
 
-        print(f"Epoca {epoch + 1} / {NUM_EPOCHS} \n Training loss: {loss:.4f} - Otras metricas de entrenamiento: ")
+        print(f"Epoca {epoch + 1} / {NUM_EPOCHS} \nTraining loss: {loss:.4f} - Otras metricas de entrenamiento: ")
         print(f"Precision: {train_result['accuracy_score']:.4f} - F1 Score: {train_result['f1_score']:.4f}")
-        print(f" \n Validation loss : {val_loss:.4f} - Otras metricas de validacion:")
+        print(f" \nValidation loss : {val_loss:.4f} - Otras metricas de validacion:")
         print(f"Precision: {val_result['accuracy_score']:.4f} - F1 Score: {val_result['f1_score']:.4f}")
         print("\n")
         
