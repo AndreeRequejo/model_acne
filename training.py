@@ -13,37 +13,37 @@ def train_one_epoch(
     train_metrics,
     val_metrics,
 ):
-    # training-the-model
+    # entrenar-el-modelo
     train_loss = 0
     valid_loss = 0
     all_labels = []
     all_preds = []
     model.train()
     for data, target in train_loader:
-        # move-tensors-to-GPU
+        # mover-tensores-a-GPU
         data = data.type(torch.FloatTensor).to(device)
         target = target.float().to(device)
-        # clear-the-gradients-of-all-optimized-variables
+        # limpiar-gradientes-de-todas-las-variables-optimizadas
         optimizer.zero_grad()
-        # forward-pass: compute-predicted-outputs-by-passing-inputs-to-the-model
+        # paso-hacia-adelante: calcular-salidas-predichas-pasando-entradas-al-modelo
         output = model(data)
         preds = torch.argmax(output, axis=1).cpu().detach().numpy()
         labels = target.cpu().numpy()
-        # calculate-the-batch-loss
+        # calcular-la-pérdida-del-lote
         loss = criterion(output.type(torch.FloatTensor), target.type(torch.LongTensor))
-        # backward-pass: compute-gradient-of-the-loss-wrt-model-parameters
+        # paso-hacia-atrás: calcular-gradiente-de-la-pérdida-respecto-a-parámetros-del-modelo
         loss.backward()
-        # perform-a-ingle-optimization-step (parameter-update)
+        # realizar-un-paso-de-optimización (actualización-de-parámetros)
         optimizer.step()
-        # update-training-loss
+        # actualizar-pérdida-de-entrenamiento
         train_loss += loss.item() * data.size(0)
-        # calculate training metrics
+        # calcular métricas de entrenamiento
         all_labels.extend(labels)
         all_preds.extend(preds)
     
     train_metrics.step(all_labels, all_preds)
 
-    # validate-the-model
+    # validar-el-modelo
     model.eval()
     all_labels = []
     all_preds = []
@@ -58,7 +58,7 @@ def train_one_epoch(
             all_preds.extend(preds)
             loss = criterion(output, target)
 
-            # update-average-validation-loss
+            # actualizar-pérdida-promedio-de-validación
             valid_loss += loss.item() * data.size(0)
 
     val_metrics.step(all_labels, all_preds)
@@ -74,19 +74,19 @@ def train_one_epoch(
 
 
 def test_result(model, test_loader, device, name='no_tta_prob.npy'):
-    """Testing the model by turning model "Eval" mode"""
+    """Probar el modelo cambiando a modo de evaluación"""
     model.eval()
     preds = []
     aprobs = []
     labels = []
     with torch.no_grad():
         for data, target in test_loader:
-            # move-tensors-to-GPU
+            # mover-tensores-a-GPU
             data = data.to(device)
-            # forward-pass: compute-predicted-outputs-by-passing-inputs-to-the-model
+            # paso-hacia-adelante: calcular-salidas-predichas-pasando-entradas-al-modelo
             output = model(data)
             prob = nn.Softmax(dim=1)
-            # applying Softmax to results
+            # aplicar Softmax a los resultados
             probs = prob(output)
             aprobs.append(probs.cpu())
             labels.append(target.cpu().numpy())

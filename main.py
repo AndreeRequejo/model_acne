@@ -13,19 +13,19 @@ from training import train_one_epoch, test_result
 
 
 def create_dataloaders():
-    """Create training, validation and test dataloaders"""
-    # Load data
+    """Crear cargadores de datos de entrenamiento, validación y prueba"""
+    # Cargar datos
     train_df, test_df = load_data(TRAIN_FILES[8], TEST_FILES[8])
     
-    # Split training data
+    # Dividir datos de entrenamiento
     x_train, x_val, y_train, y_val = data_split(train_df, VALIDATION_SPLIT)
     
-    # Create datasets
+    # Crear conjuntos de datos
     train_dataset = ClassificationDataset(x_train, data_path=IMAGE_PATH, transform=TRAIN_TRANSFORM, training=True)
     val_dataset = ClassificationDataset(x_val, data_path=IMAGE_PATH, transform=TEST_TRANSFORM, training=True)
     testset = ClassificationDataset(test_df, data_path=IMAGE_PATH, transform=TEST_TRANSFORM, training=True)
     
-    # Create dataloaders
+    # Crear cargadores de datos
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=1, shuffle=False)
     test_loader = torch.utils.data.DataLoader(testset, batch_size=1, shuffle=False)
@@ -34,7 +34,7 @@ def create_dataloaders():
 
 
 def setup_training():
-    """Setup model, optimizer, scheduler and loss function"""
+    """Configurar modelo, optimizador, programador y función de pérdida"""
     # Detectar dispositivo disponible
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Usando dispositivo: {device}")
@@ -44,21 +44,21 @@ def setup_training():
         torch.cuda.init()
         torch.cuda.empty_cache()
     
-    # Model
+    # Modelo
     model = MyNet().to(device)
     
-    # Test model with dummy input
+    # Probar modelo con entrada de prueba
     test_input = torch.ones((16, 3, 224, 224)).to(device)
     model(test_input)
     
-    # Optimizer and scheduler - configuración más conservadora
+    # Optimizador y programador - configuración más conservadora
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE * 0.5, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
     scheduler = ReduceLROnPlateau(optimizer, "min", patience=4, factor=0.5)
     
-    # Loss function
+    # Función de pérdida
     criterion = LabelSmoothingLoss(smoothing=0.1)
     
-    # Metrics
+    # Métricas
     train_metrics = Metrics(["accuracy_score", "f1_score"])
     val_metrics = Metrics(["accuracy_score", "f1_score"])
     
@@ -66,8 +66,8 @@ def setup_training():
 
 
 def train_model():
-    """Main training loop"""
-    # Setup
+    """Bucle principal de entrenamiento"""
+    # Configuración inicial
     import matplotlib.pyplot as plt
     train_loader, val_loader, test_loader = create_dataloaders()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -81,7 +81,7 @@ def train_model():
         optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, betas=(0.9, 0.999), eps=1e-08, weight_decay=1e-4)
         scheduler = ReduceLROnPlateau(optimizer, "min", patience=4, factor=0.5)
         
-        # Loss function
+        # Función de pérdida
         criterion = LabelSmoothingLoss(smoothing=0.1)
 
         train_metrics = Metrics(["accuracy_score", "f1_score"])
@@ -91,7 +91,7 @@ def train_model():
         model, optimizer, scheduler, criterion, train_metrics, val_metrics = setup_training()
         model = model.to(device)
 
-    # Enable gradients
+    # Habilitar gradientes
     for param in model.parameters():
         param.requires_grad = True
 
@@ -101,7 +101,7 @@ def train_model():
     train_accuracies = []
     val_accuracies = []
 
-    # Training loop
+    # Bucle de entrenamiento
     best_val_acc = 0.0
     print("Begin training process")
 
@@ -138,7 +138,7 @@ def train_model():
         print(val_result)
         print("\n")
 
-        # Save best model
+        # Guardar mejor modelo
         if best_val_acc < float(val_result["accuracy_score"]):
             best_val_acc = val_result["accuracy_score"]
             torch.save(model, MODEL_SAVE_PATH)

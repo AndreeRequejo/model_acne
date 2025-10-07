@@ -43,15 +43,15 @@ def make_loader(dataset, train_batch_size, validation_split=0.2):
     Returns:
         [type]: [description]
     """
-    # Numero de muestras en train y test set
+    # Número de muestras en conjuntos de entrenamiento y prueba
     train_len = int(len(dataset) * (1 - validation_split))
     test_len = len(dataset) - train_len
     train_set, test_set = torch.utils.data.random_split(dataset, [train_len, test_len])
-    # Crear train_loader
+    # Crear cargador de entrenamiento
     train_loader = torch.utils.data.DataLoader(
         train_set, batch_size=train_batch_size, shuffle=True,
     )
-    # Crear test_loader
+    # Crear cargador de prueba
     test_loader = torch.utils.data.DataLoader(test_set, batch_size=1, shuffle=False,)
     return train_loader, test_loader
 

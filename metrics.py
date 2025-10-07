@@ -6,16 +6,16 @@ import matplotlib.pyplot as plt
 class Metrics:
     def __init__(self, metric_names):
         self.metric_names = metric_names
-        # initialize a metric dictionary
+        # inicializar un diccionario de métricas
         self.metric_dict = {metric_name: [0] for metric_name in self.metric_names}
 
     def step(self, labels, preds):
         for metric in self.metric_names:
-            # get the metric function
+            # obtener la función de métrica
             do_metric = getattr(
-                skmetrics, metric, "The metric {} is not implemented".format(metric)
+                skmetrics, metric, "La métrica {} no está implementada".format(metric)
             )
-            # check if metric require average method, if yes set to 'micro' or 'macro' or 'None'
+            # verificar si la métrica requiere método de promedio, si es así establecer 'micro', 'macro' o 'None'
             try:
                 self.metric_dict[metric].append(
                     do_metric(labels, preds, average="macro")
@@ -24,13 +24,13 @@ class Metrics:
                 self.metric_dict[metric].append(do_metric(labels, preds))
 
     def epoch(self):
-        # calculate metrics for an entire epoch
+        # calcular métricas para una época completa
         avg = [sum(metric) / (len(metric) - 1) for metric in self.metric_dict.values()]
         metric_as_dict = dict(zip(self.metric_names, avg))
         return metric_as_dict
 
     def last_step_metrics(self):
-        # return metrics of last steps
+        # retornar métricas de los últimos pasos
         values = [self.metric_dict[metric][-1] for metric in self.metric_names]
         metric_as_dict = dict(zip(self.metric_names, values))
         return metric_as_dict

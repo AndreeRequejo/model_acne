@@ -12,15 +12,15 @@ from model import MyNet
 if __name__ == "__main__":
     import sys
     
-    # Usar nombre de modelo desde argumentos o default
+    # Usar nombre de modelo desde argumentos o por defecto
     model_name = sys.argv[1] if len(sys.argv) > 1 else MODEL_SAVE_PATH
     
     print(f"Testing modelo: {model_name}")
     
-    # Preparar dispositivo
+    # Preparar dispositivo de cómputo
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    # Cargar modelo
+    # Cargar modelo entrenado
     weights_path = model_name.replace('.pt', '_weights.pt')
     
     try:
@@ -29,7 +29,7 @@ if __name__ == "__main__":
         model.load_state_dict(torch.load(weights_path, weights_only=True))
         model = model.to(device)
     except:
-        # Si falla, usar el método original
+        # Si falla, usar el método original de carga completa
         model = torch.load(model_name, weights_only=False)
         model = model.to(device)
     
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     test_loader = torch.utils.data.DataLoader(testset, batch_size=1, shuffle=False)
     print(f"{len(test_df)} muestras de test cargadas")
     
-    # Evaluar modelo
+    # Evaluar modelo en modo de inferencia
     model.eval()
     predictions = []
     true_labels = []
@@ -55,15 +55,15 @@ if __name__ == "__main__":
             predictions.append(pred)
             true_labels.append(target.item())
     
-    # Convertir a array numpy
+    # Convertir a arreglo numpy
     true_labels = np.array(true_labels)
     
-    # Calcular métricas
+    # Calcular métricas de evaluación
     accuracy = accuracy_score(true_labels, predictions)
     
     print(f"\nAccuracy: {accuracy:.4f} ({accuracy*100:.2f}%)")
     
-    # Mostrar reporte de clasificación
+    # Mostrar reporte detallado de clasificación
     print("\n" + "="*50)
     print("Reporte de clasificación:")
     print("="*50)
@@ -77,13 +77,13 @@ if __name__ == "__main__":
     print("-"*30)
     print(cm)
 
-    # Visualizar matriz de confusión
+    # Visualizar matriz de confusión gráficamente
     plt.figure(figsize=(10, 8))
     plt.imshow(cm, interpolation='nearest', cmap='Blues')
     plt.title('Matriz de Confusión')
     plt.colorbar()
 
-    # Agregar números manualmente
+    # Agregar valores numéricos a la matriz
     thresh = cm.max() / 2.
     for i in range(cm.shape[0]):
         for j in range(cm.shape[1]):
