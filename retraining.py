@@ -162,10 +162,16 @@ def evaluate_fold(fold_index, test_loader, val_loader, device):
     test_accuracy = accuracy_score(test_labels.flatten(), test_preds)
     
     print(f"\nResultados del Fold {fold_index}:")
-    print("-" * 30)
-    print(f"Precisi\u00f3n de Validaci\u00f3n: {val_accuracy:.4f} ({val_accuracy*100:.2f}%)")
-    print(f"Precisi\u00f3n de Prueba: {test_accuracy:.4f} ({test_accuracy*100:.2f}%)")
-    print("\nReporte de Clasificaci\u00f3n (Conjunto de Prueba):")
+    print("=" * 55)
+    print(f"Precisión de Validación: {val_accuracy:.4f} ({val_accuracy*100:.2f}%)")
+    print(f"Precisión de Prueba: {test_accuracy:.4f} ({test_accuracy*100:.2f}%)")
+    
+    print("\nReporte de Clasificación - Conjunto de Validación:")
+    print("=" * 55)
+    print(classification_report(val_labels.flatten(), val_preds, target_names=CLASS_NAMES))
+    
+    print("\nReporte de Clasificación - Conjunto de Prueba:")
+    print("=" * 55)
     print(classification_report(test_labels.flatten(), test_preds, target_names=CLASS_NAMES))
     
     return {
@@ -201,18 +207,11 @@ def train_fold_with_best_weights(fold_index):
     # Evaluar el fold
     result = evaluate_fold(fold_index, test_loader, val_loader, device)
     
-    print(f"Fold {fold_index} completado con precisión de prueba: {result['test_accuracy']:.4f}")
-    
     return result
 
 
 if __name__ == "__main__":
     # Entrenar un fold específico usando pesos de core/best.pt
-    result = train_fold_with_best_weights(5)
+    result = train_fold_with_best_weights(9)
     
-    print(f"\nTodos los modelos guardados en directorio 'core/'")
-    print("Archivos de modelo disponibles:")
-    for fold in range(5, 10):
-        model_path, weights_path = get_model_save_paths(fold)
-        if os.path.exists(weights_path):
-            print(f"  - {weights_path}")
+    print(f"\nModelos guardados en directorio 'core/'")
