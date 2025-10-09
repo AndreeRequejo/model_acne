@@ -7,7 +7,7 @@ import os
 # Importar módulos locales
 from config import *
 from dataset import ClassificationDataset, data_split, load_data
-from metrics import Metrics, plot_learning_curves_advanced, plot_training_history_detailed
+from metrics import Metrics, plot_training_history_detailed
 from model import MyNet, LabelSmoothingLoss
 from training import train_one_epoch, test_result
 
@@ -141,8 +141,7 @@ def train_model():
             #     print(f"Early stopping activado después de {i + 1} épocas")
             #     break
     
-    # Usar las nuevas funciones de visualización
-    plot_learning_curves_advanced(train_losses, val_losses, train_accuracies, val_accuracies)
+    # Usar las funciones de visualización
     plot_training_history_detailed(train_losses, val_losses, train_accuracies, val_accuracies)
 
     return test_loader, val_loader, device

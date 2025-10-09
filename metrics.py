@@ -35,105 +35,56 @@ class Metrics:
         metric_as_dict = dict(zip(self.metric_names, values))
         return metric_as_dict
 
-def plot_learning_curves_advanced(train_losses, val_losses, train_accuracies, val_accuracies):
-    """Graficar curvas de aprendizaje avanzadas con escalas uniformes"""
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+def plot_training_history_detailed(train_losses, val_losses, train_accuracies, val_accuracies):
+    """Visualización detallada del historial de entrenamiento"""
     
-    epochs = range(1, len(train_losses) + 1)
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
+    epochs = np.arange(1, len(train_losses) + 1)
     
-    # Gráfico de pérdidas con escala uniforme
-    ax1.plot(epochs, train_losses, 'b-o', label='Entrenamiento', linewidth=2, markersize=6)
-    ax1.plot(epochs, val_losses, 'r-s', label='Validación', linewidth=2, markersize=6)
-    ax1.set_title('Evolución de la Pérdida Durante el Entrenamiento', fontsize=14, fontweight='bold')
-    ax1.set_xlabel('Época', fontsize=12)
-    ax1.set_ylabel('Pérdida', fontsize=12)
-    ax1.legend(fontsize=11)
-    ax1.grid(True, alpha=0.3)
+    # Gráfico de pérdida
+    ax1.plot(epochs, train_losses, 'b-o', label='Entrenamiento', markersize=4, linewidth=2)
+    ax1.plot(epochs, val_losses, 'r-s', label='Validación', markersize=4, linewidth=2)
+    ax1.set_xlabel('Época')
+    ax1.set_ylabel('Pérdida')
     
-    # Ajustar escala Y para pérdidas (usar rango más amplio para evitar variaciones exageradas)
+    # Ajustar escala Y para pérdidas - rango más amplio
     loss_min = min(min(train_losses), min(val_losses))
     loss_max = max(max(train_losses), max(val_losses))
     loss_range = loss_max - loss_min
-    ax1.set_ylim(loss_min - loss_range * 0.1, loss_max + loss_range * 0.1)
+    ax1.set_ylim(loss_min - loss_range * 0.4, loss_max + loss_range * 0.4)
     
-    # Gráfico de precisión con escala uniforme
-    ax2.plot(epochs, train_accuracies, 'g-o', label='Entrenamiento', linewidth=2, markersize=6)
-    ax2.plot(epochs, val_accuracies, 'm-s', label='Validación', linewidth=2, markersize=6)
-    ax2.set_title('Evolución de la Precisión Durante el Entrenamiento', fontsize=14, fontweight='bold')
-    ax2.set_xlabel('Época', fontsize=12)
-    ax2.set_ylabel('Precisión', fontsize=12)
-    ax2.legend(fontsize=11)
-    ax2.grid(True, alpha=0.3)
+    ax1.set_title('Evolución de la Pérdida Durante el Entrenamiento', fontsize=14, fontweight='bold')
+    ax1.legend(fontsize=12)
+    ax1.grid(True, alpha=0.3)
     
-    # Ajustar escala Y para precisión (usar rango fijo más amplio)
+    # Gráfico de accuracy
+    ax2.plot(epochs, train_accuracies, 'g-o', label='Entrenamiento', markersize=4, linewidth=2)
+    ax2.plot(epochs, val_accuracies, 'm-s', label='Validación', markersize=4, linewidth=2)
+    ax2.set_xlabel('Época')
+    ax2.set_ylabel('Accuracy')
+    
+    # Ajustar escala Y para accuracy - rango más amplio
     acc_min = min(min(train_accuracies), min(val_accuracies))
     acc_max = max(max(train_accuracies), max(val_accuracies))
+    acc_range = acc_max - acc_min
+    # Ampliar el rango para accuracy, manteniendo límites lógicos
+    y_min = max(0, acc_min - acc_range * 0.25)
+    y_max = min(1, acc_max + acc_range * 0.25)
+    ax2.set_ylim(y_min, y_max)
     
-    # Usar un rango mínimo del 10% para evitar variaciones exageradas
-    if (acc_max - acc_min) < 0.1:
-        center = (acc_max + acc_min) / 2
-        ax2.set_ylim(center - 0.05, center + 0.05)
-    else:
-        acc_range = acc_max - acc_min
-        ax2.set_ylim(acc_min - acc_range * 0.1, acc_max + acc_range * 0.1)
-    
+    ax2.set_title('Evolución de la Precisión Durante el Entrenamiento', fontsize=14, fontweight='bold')
+    ax2.legend(fontsize=12)
+    ax2.grid(True, alpha=0.3)
+
     plt.tight_layout()
     plt.show()
 
-
-def plot_training_history_detailed(train_losses, val_losses, train_accuracies, val_accuracies):
-    """Graficar historial detallado de entrenamiento con escalas mejoradas"""
-    fig, axes = plt.subplots(2, 2, figsize=(15, 12))
-    
-    epochs = range(1, len(train_losses) + 1)
-    
-    # Pérdida de entrenamiento
-    axes[0, 0].plot(epochs, train_losses, 'b-o', linewidth=2, markersize=4)
-    axes[0, 0].set_title('Pérdida de Entrenamiento', fontsize=12, fontweight='bold')
-    axes[0, 0].set_xlabel('Época')
-    axes[0, 0].set_ylabel('Pérdida')
-    axes[0, 0].grid(True, alpha=0.3)
-    
-    # Pérdida de validación
-    axes[0, 1].plot(epochs, val_losses, 'r-s', linewidth=2, markersize=4)
-    axes[0, 1].set_title('Pérdida de Validación', fontsize=12, fontweight='bold')
-    axes[0, 1].set_xlabel('Época')
-    axes[0, 1].set_ylabel('Pérdida')
-    axes[0, 1].grid(True, alpha=0.3)
-    
-    # Precisión de entrenamiento
-    axes[1, 0].plot(epochs, train_accuracies, 'g-o', linewidth=2, markersize=4)
-    axes[1, 0].set_title('Precisión de Entrenamiento', fontsize=12, fontweight='bold')
-    axes[1, 0].set_xlabel('Época')
-    axes[1, 0].set_ylabel('Precisión')
-    axes[1, 0].grid(True, alpha=0.3)
-    
-    # Precisión de validación
-    axes[1, 1].plot(epochs, val_accuracies, 'm-s', linewidth=2, markersize=4)
-    axes[1, 1].set_title('Precisión de Validación', fontsize=12, fontweight='bold')
-    axes[1, 1].set_xlabel('Época')
-    axes[1, 1].set_ylabel('Precisión')
-    axes[1, 1].grid(True, alpha=0.3)
-    
-    # Ajustar escalas para cada subplot individualmente
-    for i in range(2):
-        for j in range(2):
-            if i == 0:  # Gráficos de pérdida
-                data = train_losses if j == 0 else val_losses
-                data_min, data_max = min(data), max(data)
-                data_range = data_max - data_min
-                axes[i, j].set_ylim(data_min - data_range * 0.1, data_max + data_range * 0.1)
-            else:  # Gráficos de precisión
-                data = train_accuracies if j == 0 else val_accuracies
-                data_min, data_max = min(data), max(data)
-                
-                # Usar rango mínimo del 5% para precisión individual
-                if (data_max - data_min) < 0.05:
-                    center = (data_max + data_min) / 2
-                    axes[i, j].set_ylim(center - 0.025, center + 0.025)
-                else:
-                    data_range = data_max - data_min
-                    axes[i, j].set_ylim(data_min - data_range * 0.1, data_max + data_range * 0.1)
-    
-    plt.tight_layout()
-    plt.show()
+    # Estadísticas adicionales
+    print("\n" + "="*50)
+    print("ESTADÍSTICAS DE ENTRENAMIENTO")
+    print("="*50)
+    print(f"Accuracy de entrenamiento: {max(train_accuracies):.4f}")
+    print(f"Accuracy de validación: {max(val_accuracies):.4f}")
+    print(f"Pérdida de entrenamiento: {train_losses[-1]:.4f}")
+    print(f"Pérdida de validación: {val_losses[-1]:.4f}")
+    print("="*50)

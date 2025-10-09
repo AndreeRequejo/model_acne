@@ -6,7 +6,7 @@ from tqdm import tqdm
 import os
 from config import *
 from dataset import ClassificationDataset, data_split, load_data
-from metrics import Metrics, plot_learning_curves_advanced, plot_training_history_detailed
+from metrics import Metrics, plot_training_history_detailed
 from model import MyNet, LabelSmoothingLoss
 from training import train_one_epoch, test_result
 
@@ -37,8 +37,15 @@ def setup_model_and_training(device, previous_weights_path=None):
             model.load_state_dict(torch.load(previous_weights_path, map_location=device, weights_only=True))
             print(f"Pesos cargados desde: {previous_weights_path}")
         except Exception as e:
-            print(f"No se pudieron cargar los pesos previos: {e}")
-            print("Iniciando con pesos por defecto de EfficientNet")
+            print(f"No se pudieron cargar los pesos previos con load_state_dict")
+            try:
+                # Intentar cargar el modelo completo si falla la carga de solo pesos
+                model = torch.load(previous_weights_path, map_location=device, weights_only=False)
+                model = model.to(device)
+                print("Pesos cargados usando método de carga completo del modelo")
+            except Exception as e2:
+                print(f"Error al cargar modelo completo: {e2}")
+                print("Iniciando con pesos por defecto de EfficientNet")
     else:
         print("Iniciando con pesos por defecto de EfficientNet")
     
@@ -130,7 +137,6 @@ def train_single_fold(fold_index, previous_weights_path=None):
             print(f"Precision de validacion: {val_result['accuracy_score']:.4f} ===> No saving")
     
     # Graficar resultados
-    plot_learning_curves_advanced(train_losses, val_losses, train_accuracies, val_accuracies)
     plot_training_history_detailed(train_losses, val_losses, train_accuracies, val_accuracies)
 
     print(f"Fold {fold_index} completado con mejor precision de validacion: {best_val_acc:.4f}")
@@ -139,8 +145,9 @@ def train_single_fold(fold_index, previous_weights_path=None):
 
 
 def evaluate_fold(fold_index, test_loader, val_loader, device):
-    """Evaluar el modelo entrenado para un fold específico"""
+    """Evaluar el modelo entrenado para un fold específico - solo validación"""
     from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+    import matplotlib.pyplot as plt
     
     model_path, weights_path = get_model_save_paths(fold_index)
     
@@ -153,31 +160,52 @@ def evaluate_fold(fold_index, test_loader, val_loader, device):
     
     test_model = test_model.to(device)
     
-    # Obtener predicciones
+    # Obtener predicciones solo para validación
     val_preds, val_labels = test_result(test_model, val_loader, device)
-    test_preds, test_labels = test_result(test_model, test_loader, device)
     
-    # Calcular precisiones
+    # Calcular precisión de validación
     val_accuracy = accuracy_score(val_labels.flatten(), val_preds)
-    test_accuracy = accuracy_score(test_labels.flatten(), test_preds)
     
-    print(f"\nResultados del Fold {fold_index}:")
+    print(f"\nResultados del Fold {fold_index} - Conjunto de Validación:")
     print("=" * 55)
     print(f"Precisión de Validación: {val_accuracy:.4f} ({val_accuracy*100:.2f}%)")
-    print(f"Precisión de Prueba: {test_accuracy:.4f} ({test_accuracy*100:.2f}%)")
     
     print("\nReporte de Clasificación - Conjunto de Validación:")
     print("=" * 55)
     print(classification_report(val_labels.flatten(), val_preds, target_names=CLASS_NAMES))
     
-    print("\nReporte de Clasificación - Conjunto de Prueba:")
+    # Calcular y mostrar matriz de confusión
+    cm = confusion_matrix(val_labels.flatten(), val_preds)
+    
+    print("\nMatriz de Confusión - Conjunto de Validación:")
     print("=" * 55)
-    print(classification_report(test_labels.flatten(), test_preds, target_names=CLASS_NAMES))
+    print(cm)
+    
+    # Visualizar matriz de confusión
+    plt.figure(figsize=(8, 6))
+    plt.imshow(cm, interpolation='nearest', cmap='Blues')
+    plt.title(f'Matriz de Confusión - Fold {fold_index} (Validación)', fontsize=14, fontweight='bold')
+    plt.colorbar()
+    
+    # Agregar números a la matriz
+    thresh = cm.max() / 2.
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            plt.text(j, i, format(cm[i, j], 'd'),
+                    horizontalalignment="center",
+                    color="white" if cm[i, j] > thresh else "black",
+                    fontsize=12, fontweight='bold')
+    
+    plt.ylabel('Valores Reales', fontsize=12)
+    plt.xlabel('Predicciones', fontsize=12)
+    plt.xticks(range(len(CLASS_NAMES)), CLASS_NAMES, rotation=45)
+    plt.yticks(range(len(CLASS_NAMES)), CLASS_NAMES)
+    plt.tight_layout()
+    plt.show()
     
     return {
         'fold': fold_index,
-        'val_accuracy': val_accuracy,
-        'test_accuracy': test_accuracy
+        'val_accuracy': val_accuracy
     }
 
 
@@ -212,6 +240,6 @@ def train_fold_with_best_weights(fold_index):
 
 if __name__ == "__main__":
     # Entrenar un fold específico usando pesos de core/best.pt
-    result = train_fold_with_best_weights(9)
+    result = train_fold_with_best_weights(8)
     
     print(f"\nModelos guardados en directorio 'core/'")
