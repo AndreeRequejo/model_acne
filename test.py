@@ -21,17 +21,14 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     # Cargar modelo entrenado
-    weights_path = model_name.replace('.pt', '_weights.pt')
-    
     try:
-        # Crear modelo y cargar solo los pesos
-        model = MyNet().cuda()
-        model.load_state_dict(torch.load(weights_path, weights_only=True))
-        model = model.to(device)
+        model = MyNet().to(device)
+        model.load_state_dict(torch.load(model_name, map_location=device))
+        print(f"Pesos cargados desde: {model_name}")
     except:
-        # Si falla, usar el método original de carga completa
-        model = torch.load(model_name, weights_only=False)
+        model = torch.load(model_name, map_location=device)
         model = model.to(device)
+        print(f"Modelo cargado desde: {model_name}")
     
     # Cargar datos de test
     print("Cargando datos de test...")
