@@ -23,10 +23,10 @@ if __name__ == "__main__":
     # Cargar modelo entrenado
     try:
         model = MyNet().to(device)
-        model.load_state_dict(torch.load(model_name, map_location=device))
+        model.load_state_dict(torch.load(model_name, map_location=device, weights_only=True))
         print(f"Pesos cargados desde: {model_name}")
     except:
-        model = torch.load(model_name, map_location=device)
+        model = torch.load(model_name, map_location=device, weights_only=False)
         model = model.to(device)
         print(f"Modelo cargado desde: {model_name}")
     
@@ -41,12 +41,23 @@ if __name__ == "__main__":
     model.eval()
     predictions = []
     true_labels = []
+    inference_times = []
     
     print("Evaluando modelo...")
+    import time
+    
     with torch.no_grad():
         for data, target in test_loader:
             data = data.to(device)
+            
+            # Medir tiempo de inferencia
+            start_time = time.time()
             output = model(data)
+            end_time = time.time()
+            
+            inference_time = (end_time - start_time) * 1000  # Convertir a milisegundos
+            inference_times.append(inference_time)
+            
             pred = torch.argmax(output, axis=1).item()
             
             predictions.append(pred)
@@ -54,11 +65,26 @@ if __name__ == "__main__":
     
     # Convertir a arreglo numpy
     true_labels = np.array(true_labels)
+    inference_times = np.array(inference_times)
     
     # Calcular métricas de evaluación
     accuracy = accuracy_score(true_labels, predictions)
     
+    # Calcular estadísticas de tiempo de inferencia
+    avg_inference_time = np.mean(inference_times)
+    min_inference_time = np.min(inference_times)
+    max_inference_time = np.max(inference_times)
+    
     print(f"\nAccuracy: {accuracy:.4f} ({accuracy*100:.2f}%)")
+    
+    # Mostrar estadísticas de tiempo de inferencia
+    print(f"\n" + "="*50)
+    print("ESTADÍSTICAS DE TIEMPO DE INFERENCIA:")
+    print("="*50)
+    print(f"Tiempo promedio por imagen: {avg_inference_time:.2f} ms")
+    print(f"Tiempo mínimo: {min_inference_time:.2f} ms")
+    print(f"Tiempo máximo: {max_inference_time:.2f} ms")
+    print("="*50)
     
     # Mostrar reporte detallado de clasificación
     print("\n" + "="*50)
