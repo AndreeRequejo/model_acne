@@ -126,8 +126,7 @@ def train_model():
         # Guardar mejor modelo
         if best_val_acc < float(val_result["accuracy_score"]):
             best_val_acc = val_result["accuracy_score"]
-            torch.save(model, MODEL_SAVE_PATH)
-            torch.save(model.state_dict(), MODEL_PESOS_PATH)
+            torch.save(model.state_dict(), MODEL_SAVE_PATH)
             print(f"Precision de validacion: {best_val_acc:.4f} ===> Save best epoch")
 
             # =================== EARLY STOPPING (COMENTADO) ===================

@@ -129,7 +129,6 @@ def train_single_fold(fold_index, previous_weights_path=None):
             best_val_acc = val_result["accuracy_score"]
             
             model_path, weights_path = get_model_save_paths(fold_index)
-            torch.save(model, model_path)
             torch.save(model.state_dict(), weights_path)
             
             print(f"Precision de validacion: {best_val_acc:.4f} ===> Save best epoch")
