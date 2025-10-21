@@ -4,6 +4,7 @@ import torch
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from tqdm import tqdm
 import os
+import numpy as np
 from config import *
 from dataset import ClassificationDataset, data_split, load_data
 from metrics import Metrics, plot_training_history_detailed
@@ -180,23 +181,31 @@ def evaluate_fold(fold_index, test_loader, val_loader, device):
     print("=" * 55)
     print(cm)
     
-    # Visualizar matriz de confusión
-    plt.figure(figsize=(8, 6))
-    plt.imshow(cm, interpolation='nearest', cmap='Blues')
-    plt.title(f'Matriz de Confusión - Fold {fold_index} (Validación)', fontsize=14, fontweight='bold')
-    plt.colorbar()
+    # Visualizar matriz de confusión con porcentajes
+    plt.figure(figsize=(10, 8))
     
-    # Agregar números a la matriz
-    thresh = cm.max() / 2.
+    # Calcular porcentajes por fila (para cada clase real)
+    cm_percent = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis] * 100
+    
+    plt.imshow(cm_percent, interpolation='nearest', cmap='Blues', vmin=0, vmax=100)
+    plt.title(f'Matriz de Confusión - Fold {fold_index} (Validación)', fontsize=16, fontweight='bold')
+    cbar = plt.colorbar()
+    cbar.set_label('Porcentaje (%)', rotation=270, labelpad=20)
+    
+    # Agregar números y porcentajes a la matriz
+    thresh = cm_percent.max() / 2.
     for i in range(cm.shape[0]):
         for j in range(cm.shape[1]):
-            plt.text(j, i, format(cm[i, j], 'd'),
+            # Mostrar número absoluto y porcentaje
+            text = f'{cm[i, j]}\n({cm_percent[i, j]:.1f}%)'
+            plt.text(j, i, text,
                     horizontalalignment="center",
-                    color="white" if cm[i, j] > thresh else "black",
+                    verticalalignment="center",
+                    color="white" if cm_percent[i, j] > thresh else "black",
                     fontsize=12, fontweight='bold')
     
-    plt.ylabel('Valores Reales', fontsize=12)
-    plt.xlabel('Predicciones', fontsize=12)
+    plt.ylabel('Valores Reales', fontsize=14)
+    plt.xlabel('Predicciones', fontsize=14)
     plt.xticks(range(len(CLASS_NAMES)), CLASS_NAMES, rotation=45)
     plt.yticks(range(len(CLASS_NAMES)), CLASS_NAMES)
     plt.tight_layout()

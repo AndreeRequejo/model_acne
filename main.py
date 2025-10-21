@@ -4,6 +4,7 @@ import torch
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from tqdm import tqdm
 import os
+import numpy as np
 # Importar módulos locales
 from config import *
 from dataset import ClassificationDataset, data_split, load_data
@@ -151,13 +152,10 @@ def evaluate_model(data_loader, device, dataset_name="Test"):
     from sklearn.metrics import classification_report as rp, confusion_matrix, accuracy_score
     import matplotlib.pyplot as plt
     
-    # Intentar cargar primero los pesos solamente
-    weights_path = MODEL_SAVE_PATH.replace('.pt', '_weights.pt')
-    
     try:
         # Crear modelo y cargar solo los pesos
         test_model = MyNet().to(device)
-        test_model.load_state_dict(torch.load(weights_path, weights_only=True))
+        test_model.load_state_dict(torch.load(MODEL_SAVE_PATH, weights_only=True))
         test_model = test_model.to(device)
     except:
         # Si falla, usar el método original
@@ -188,23 +186,31 @@ def evaluate_model(data_loader, device, dataset_name="Test"):
     print("="*55)
     print(cm)
 
-    # Visualizar matriz de confusión
+    # Visualizar matriz de confusión con porcentajes
     plt.figure(figsize=(10, 8))
-    plt.imshow(cm, interpolation='nearest', cmap='Blues')
-    plt.title(f'Matriz de Confusión - {dataset_name}')
-    plt.colorbar()
+    
+    # Calcular porcentajes por fila (para cada clase real)
+    cm_percent = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis] * 100
+    
+    plt.imshow(cm_percent, interpolation='nearest', cmap='Blues', vmin=0, vmax=100)
+    plt.title(f'Matriz de Confusión - {dataset_name}', fontsize=16, fontweight='bold')
+    cbar = plt.colorbar()
+    cbar.set_label('Porcentaje (%)', rotation=270, labelpad=20)
 
-    # Agregar números manualmente
-    thresh = cm.max() / 2.
+    # Agregar números y porcentajes manualmente
+    thresh = cm_percent.max() / 2.
     for i in range(cm.shape[0]):
         for j in range(cm.shape[1]):
-            plt.text(j, i, format(cm[i, j], 'd'),
+            # Mostrar número absoluto y porcentaje
+            text = f'{cm[i, j]}\n({cm_percent[i, j]:.1f}%)'
+            plt.text(j, i, text,
                     horizontalalignment="center",
-                    color="white" if cm[i, j] > thresh else "black",
-                    fontsize=14, fontweight='bold')
+                    verticalalignment="center",
+                    color="white" if cm_percent[i, j] > thresh else "black",
+                    fontsize=12, fontweight='bold')
 
-    plt.ylabel('Valores Reales')
-    plt.xlabel('Predicciones')
+    plt.ylabel('Valores Reales', fontsize=14)
+    plt.xlabel('Predicciones', fontsize=14)
     plt.xticks(range(len(CLASS_NAMES)), CLASS_NAMES, rotation=45)
     plt.yticks(range(len(CLASS_NAMES)), CLASS_NAMES)
     plt.tight_layout()
