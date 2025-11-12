@@ -1,6 +1,4 @@
-tensorflow==2.14.0
 protobuf==4.25.3
-opencv-python==4.9.0.80
 scikit-learn==1.4.2
 matplotlib==3.8.4
 seaborn==0.12.2
